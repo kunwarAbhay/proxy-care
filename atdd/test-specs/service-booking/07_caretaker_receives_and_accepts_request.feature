@@ -1,7 +1,8 @@
 # Screens: P1 Home, P2 New visit request (Caretaker app) - the dispatch side of WAITING -> ASSIGNED
-# Source: proxy-care-api-context.md (PRD v2.3) §5 P1/P2, §2 booking state, §6 realtime;
+# Source: proxy-care-ui-ux-state-for-api-design.md (PRD v2.3) §5 P1/P2, §2 booking state, §7 realtime;
 #         Entity design: caretakers.is_online requires kyc_status = APPROVED; booking_offers
-# v2.3: P1 shows an earnings wallet chip (earnings not yet withdrawn) that opens F4.
+# v2.3: P1 shows a display-only earnings wallet chip (earnings not yet withdrawn).
+# The ongoing visit card and P3 / P3a are covered in 10_caretaker_home_and_visits.feature.
 
 @caretaker-app @service-booking @dispatch @P1 @P2
 Feature: Caretaker receives and accepts a visit request
@@ -25,14 +26,22 @@ Feature: Caretaker receives and accepts a visit request
     And my earnings not yet withdrawn are "₹2,250"
     When I open the "P1 Home" screen
     Then I should see the earnings wallet chip showing "₹2,250"
-    And I should see the online/offline toggle, upcoming visits, weekly earnings and visits done
+    And I should see the online/offline toggle, ongoing visits, weekly earnings and visits done
+    And I should not see an upcoming visits section
     And I should see the bottom navigation with tabs "Home, Visits, Earnings, Profile"
 
+  @ui-state
+  Scenario: The earnings wallet chip is display-only
+    Given I am logged in to the Caretaker app as "Anita Verma" with KYC "APPROVED"
+    And I am on the "P1 Home" screen
+    When I tap the earnings wallet chip
+    Then I should remain on the "P1 Home" screen
+
   @empty-state
-  Scenario: No upcoming visits
-    Given I have no accepted visits
+  Scenario: No ongoing visits
+    Given I have no ongoing visit
     When I open the "P1 Home" screen
-    Then the upcoming visits section should show an empty state
+    Then the ongoing visits section should show an empty state
 
   # ---------- Eligibility / access control ----------
 
@@ -108,7 +117,8 @@ Feature: Caretaker receives and accepts a visit request
     When I tap "Accept"
     Then booking "PC-2481" should move to state "ASSIGNED" with caretaker "Anita Verma"
     And I should be on the "P3 My visits" screen with the visit under "Upcoming"
-    And I should now see the full pickup address and the family's instructions
+    And I should see the "Visit accepted" banner
+    And the "P3a Visit details" screen should now show the full pickup address and the family's instructions
     And the User should be notified that "Anita Verma" accepted
 
   @negative @realtime

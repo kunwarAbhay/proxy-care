@@ -1,5 +1,5 @@
 # Screen: B6 Caretaker assigned - booking state ASSIGNED (User app)
-# Source: proxy-care-api-context.md (PRD v2.3) §4 B6; Entity design (booking_secrets - pickup code readable by sponsor only)
+# Source: proxy-care-ui-ux-state-for-api-design.md (PRD v2.3) §4 B6, §9 open points; Entity design (booking_secrets - pickup code readable by sponsor only)
 
 @user-app @service-booking @B6
 Feature: Caretaker assigned
@@ -35,6 +35,7 @@ Feature: Caretaker assigned
 
   @happy-path
   Scenario: Pickup code is sent by SMS to the patient's mobile
+    Given the patient "Kamla Mehta" has mobile "+919812345678"
     When booking "PC-2481" becomes "ASSIGNED"
     Then an SMS containing the code "4821" should be sent to "+919812345678"
 
@@ -68,7 +69,7 @@ Feature: Caretaker assigned
   @access-control @security
   Scenario: Pickup code is never visible to the caretaker
     Given I am logged in to the Caretaker app as "Anita Verma"
-    When I open booking "PC-2481" in "My visits"
+    When I open the "P3a Visit details" screen for booking "PC-2481"
     Then I should not see the pickup code
     And the booking details API response should not contain the pickup code
 
@@ -80,8 +81,9 @@ Feature: Caretaker assigned
     And no caretaker or patient details should be shown
 
   # ---------- Cancellation after assignment ----------
+  # Cancellation is designed only from B5 (WAITING), not after a caretaker is assigned (§9).
 
-  @happy-path
+  @pending-design
   Scenario: Cancel an assigned booking - refund to bank
     Given the current time is "2026-10-31 19:50"
     And pickup is at "2026-11-02 10:00"

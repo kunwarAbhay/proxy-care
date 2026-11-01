@@ -1,7 +1,9 @@
 # Screen: B3 Hospital, pickup time & attachments (User app)
-# Source: proxy-care-api-context.md (PRD v2.3) §4 B3
+# Source: proxy-care-ui-ux-state-for-api-design.md (PRD v2.3) §4 B3, §8 uploads
 # v2.3: the pre-booked flag and appointment time are gone. The User sets a required
 #       pickup time = when the caretaker arrives at the patient's home.
+# The doctor field is gone: doctor name and appointment time go in the instructions.
+# Pickup time uses an M3 time picker dialog. The hospital map shows no distance.
 
 @user-app @service-booking @B3
 Feature: Hospital, pickup time and attachments
@@ -19,8 +21,8 @@ Feature: Hospital, pickup time and attachments
   # ---------- Display ----------
 
   @smoke
-  Scenario: Screen shows hospital, department, doctor, pickup time, instructions and attachments
-    Then I should see the fields "Hospital", "Department", "Doctor", "Pickup time", "Instructions for caretaker" and "Attachments"
+  Scenario: Screen shows hospital, department, pickup time, instructions and attachments
+    Then I should see the fields "Hospital", "Department", "Pickup time", "Instructions for caretaker" and "Attachments"
     And "Hospital" and "Pickup time" should be marked as required
     And the pickup time field should explain that the caretaker arrives at the patient's home at this time
     And the "Next" button should be disabled
@@ -31,28 +33,23 @@ Feature: Hospital, pickup time and attachments
   Scenario: Fill all fields and continue
     When I search for the hospital "Max Saket"
     And I select "Max Super Speciality Hospital, Saket" from the results
-    Then I should see a map pin, the hospital address
+    Then I should see a map pin and the hospital address
     When I select the department "Cardiology"
-    And I enter the doctor name "Dr. A. Sharma"
-    And I select the pickup time from the timepicker
+    And I select the pickup time "09:30 AM" in the time picker
     Then the "Next" button should be enabled
     When I tap "Next"
     Then I should be on the "B4 Review · Confirm & Pay" screen
 
   @happy-path
-  Scenario: Department and doctor are optional
+  Scenario: Department is optional
     When I select the hospital "AIIMS, Ansari Nagar"
-    And I select the pickup time from the timepicker
-    And I leave department and doctor empty
+    And I select the pickup time "09:30 AM" in the time picker
+    And I leave the department empty
     Then the "Next" button should be enabled
 
 
-  @ui-state
-  Scenario: Pickup time selection is single-select
-    Given I have selected the pickup time slot "09:30 AM"
-    When I select the pickup time slot "10:00 AM"
-    Then "10:00 AM" should be shown as selected
-    And "09:30 AM" should not be shown as selected
+
+  # ---------- Instructions ----------
 
   @happy-path
   Scenario Outline: Instructions via quick chips and free text
@@ -120,14 +117,13 @@ Feature: Hospital, pickup time and attachments
   Scenario: Pickup time in the past is not allowed for a same-day visit
     Given I went back and chose date "2026-10-31" on the "B2" screen
     And the current time is "19:50"
-    Then pickup time slots before "19:50" should be disabled
-    When I set a custom pickup time "06:00 PM"
+    When I select the pickup time "06:00 PM" in the time picker
     Then I should see the inline error "Pickup time has already passed"
     And the "Next" button should be disabled
 
   @negative
   Scenario: Changing the date to today clears a pickup time that is now in the past
-    Given I have selected the pickup time slot "09:30 AM"
+    Given I have selected the pickup time "09:30 AM"
     And the current time is "19:50"
     When I go back and change the date to "2026-10-31"
     And I return to the "B3" screen
@@ -232,7 +228,7 @@ Feature: Hospital, pickup time and attachments
   @navigation
   Scenario: Back to B2 keeps B3 inputs in the draft
     Given I have selected the hospital "AIIMS, Ansari Nagar"
-    And I have selected the pickup time slot "09:30 AM"
+    And I have selected the pickup time "09:30 AM"
     And I have entered instructions "Use the east gate"
     When I tap the back button
     And I tap "Next" on the "B2" screen

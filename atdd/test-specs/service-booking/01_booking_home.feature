@@ -1,12 +1,13 @@
 # Screen: B1 Home (User app)
-# Source: proxy-care-api-context.md (PRD v2.3) §4 "Service booking" B1, §7 common UI states
+# Source: proxy-care-ui-ux-state-for-api-design.md (PRD v2.3) §4 B1, §2 visit stage, §6 read models, §8 common UI states
 # v2.3: no User wallet - no balance chip; bottom nav is Home, Visits, Payments, Family
+# Home has an ongoing visit card and pending payment requests. Upcoming visits live on B7 (08_my_visits.feature).
 
 @user-app @service-booking @B1
-Feature: Booking home - select a family member and start a booking
+Feature: Booking home - select a family member, follow the ongoing visit and see pending payments
   As a User (sponsor)
-  I want to pick one of my linked family members from the home screen
-  So that I can start booking a caretaker for their hospital visit
+  I want to pick a linked family member, see the ongoing visit and see what I still have to pay
+  So that I can start a booking and stay on top of a visit from one screen
 
   Background:
     Given I am logged in to the User app as "Rohan Mehta"
@@ -18,13 +19,15 @@ Feature: Booking home - select a family member and start a booking
   # ---------- Display ----------
 
   @smoke
-  Scenario: Home screen shows greeting, patients, visits and navigation
+  Scenario: Home screen shows greeting, patients, ongoing visit, pending payments and navigation
     When I open the Home screen
     Then I should see a greeting containing "Rohan"
     And I should see the notifications icon
     And I should see the patient list with 2 patients
     And each patient card should show initials, name, relation, age, sex and mobility badge
-    And I should see the "Upcoming visits" section
+    And I should see the "Ongoing visit" section
+    And I should see the "Pending payment requests" section
+    And I should not see an "Upcoming visits" section
     And I should see the bottom navigation with tabs "Home, Visits, Payments, Family"
     And the "Home" tab should be active
 
@@ -64,13 +67,114 @@ Feature: Booking home - select a family member and start a booking
     And no patient is selected
     Then the "Book Caretaker" button should be disabled
 
-  # ---------- Empty states ----------
+  # ---------- Ongoing visit ----------
+
+  @smoke @happy-path
+  Scenario: Ongoing visit card shows the visit and its stage
+    Given booking "PC-2481" for "Kamla Mehta" with caretaker "Anita Verma" at "Max Super Speciality Hospital, Saket" has stage "AT_HOSPITAL"
+    When I open the Home screen
+    Then the ongoing visit card should show the patient "Kamla Mehta"
+    And the ongoing visit card should show the caretaker "Anita Verma"
+    And the ongoing visit card should show the hospital "Max Super Speciality Hospital, Saket"
+    And the ongoing visit card should show the stage badge "At hospital"
+
+  @happy-path
+  Scenario Outline: Stage badge text follows the visit stage
+    Given booking "PC-2481" has stage "<stage>"
+    When I open the Home screen
+    Then the ongoing visit card should show the stage badge "<badge>"
+
+    Examples:
+      | stage                     | badge                  |
+      | HEADING_TO_PICKUP         | Heading to pickup      |
+      | PICKED_UP                 | Patient picked up      |
+      | RIDE_TO_HOSPITAL          | Ride to hospital       |
+      | OWN_TRANSPORT_TO_HOSPITAL | In transit to hospital |
+      | AT_HOSPITAL               | At hospital            |
+      | RIDE_HOME                 | Ride home              |
+      | OWN_TRANSPORT_HOME        | In transit home        |
+      | HANDOVER                  | Handover at home       |
+
+  @realtime
+  Scenario: Stage badge updates when the visit stage changes
+    Given booking "PC-2481" has stage "PICKED_UP"
+    And I am on the Home screen
+    When the visit stage changes to "RIDE_TO_HOSPITAL"
+    Then the ongoing visit card should show the stage badge "Ride to hospital" without a manual refresh
+
+  @navigation
+  Scenario: Ongoing visit card opens the timeline and live tracking
+    Given booking "PC-2481" has stage "HEADING_TO_PICKUP"
+    And I am on the Home screen
+    When I tap the arrow on the ongoing visit card
+    Then I should be on the "U2 Visit timeline" screen
+    When I go back to the Home screen
+    And I tap "Track caretaker live" on the ongoing visit card
+    Then I should be on the "U1 Caretaker live location" screen
 
   @empty-state
-  Scenario: No visits booked yet
-    Given I have no upcoming bookings
+  Scenario: No ongoing visit
+    Given I have no ongoing visit
     When I open the Home screen
-    Then the "Upcoming visits" section should show "No visits booked yet"
+    Then the "Ongoing visit" section should show an empty state
+
+  @negative
+  Scenario: A booking still waiting for a caretaker is not an ongoing visit
+    Given I have a booking "PC-2490" in state "WAITING"
+    When I open the Home screen
+    Then the "Ongoing visit" section should not show booking "PC-2490"
+
+  # ---------- Pending payment requests ----------
+
+  @smoke @happy-path
+  Scenario: Pending payment requests are listed with a count
+    Given booking "PC-2481" has the following payment requests:
+      | type             | description                         | amount | status    |
+      | HOSPITAL_BILL    | OPD registration + consultation fee | ₹500   | REQUESTED |
+      | RIDE_TO_HOSPITAL | Ride to hospital                    | ₹320   | FAILED    |
+    When I open the Home screen
+    Then the "Pending payment requests" section should show the count badge "2"
+    And each row should show the description, payee, requested-by, time and amount
+
+  @negative
+  Scenario Outline: Only unpaid requests are pending
+    Given booking "PC-2481" has a hospital payment request for "₹500" with status "<status>"
+    When I open the Home screen
+    Then the "Pending payment requests" section should <listed> the "₹500" request
+
+    Examples:
+      | status    | listed   |
+      | REQUESTED | show     |
+      | FAILED    | show     |
+      | PAID      | not show |
+
+  @navigation
+  Scenario Outline: A pending request opens its payment screen
+    Given booking "PC-2481" has a "<type>" payment request with status "REQUESTED"
+    And I am on the Home screen
+    When I tap that request in the "Pending payment requests" section
+    Then I should be on the "<screen>" screen
+
+    Examples:
+      | type             | screen                           |
+      | HOSPITAL_BILL    | H5 Hospital payment request      |
+      | RIDE_TO_HOSPITAL | U2b Ride payment request         |
+      | RIDE_HOME        | U3b Ride home payment request    |
+
+  @realtime
+  Scenario: A new payment request appears without a manual refresh
+    Given I have no pending payment requests
+    And I am on the Home screen
+    When the caretaker sends a hospital payment request for "₹500"
+    Then the "Pending payment requests" section should show the count badge "1"
+
+  @empty-state
+  Scenario: No pending payment requests
+    Given I have no pending payment requests
+    When I open the Home screen
+    Then the "Pending payment requests" section should show an empty state
+
+  # ---------- Empty states ----------
 
   @empty-state
   Scenario: User has no linked family members
@@ -88,40 +192,13 @@ Feature: Booking home - select a family member and start a booking
     Then I should see the patient list with 1 patient
     And I should not see "Suresh Mehta" in the patient list
 
-  # ---------- Upcoming visits ----------
-
-  @happy-path
-  Scenario Outline: Upcoming visit card reflects booking state
-    Given I have a booking "<code>" for "Kamla Mehta" on "<date>" in state "<state>"
-    When I open the Home screen
-    Then the "Upcoming visits" section should show booking "<code>"
-    And the booking card should show the status label "<label>"
-
-    Examples:
-      | code    | date       | state       | label              |
-      | PC-2481 | 2026-11-02 | WAITING     | Finding caretaker  |
-      | PC-2482 | 2026-11-03 | ASSIGNED    | Caretaker assigned |
-      | PC-2483 | 2026-10-31 | IN_PROGRESS | Visit in progress  |
-
-  @negative
-  Scenario Outline: Inactive or unpaid bookings are not listed as upcoming
-    Given I have a booking "<code>" in state "<state>"
-    When I open the Home screen
-    Then the "Upcoming visits" section should not show booking "<code>"
-
-    Examples:
-      | code    | state           |
-      | PC-2490 | CANCELLED       |
-      | PC-2491 | SETTLED         |
-      | PC-2492 | PAYMENT_PENDING |
-
   # ---------- Loading / error ----------
 
   @ui-state
   Scenario: Skeleton is shown while home data loads
     Given the home data API responds slowly
     When I open the Home screen
-    Then I should see skeleton placeholders for the patient list and upcoming visits
+    Then I should see skeleton placeholders for the patient list, ongoing visit and pending payment requests
     When the home data API responds successfully
     Then the skeleton placeholders should be replaced by content
 
@@ -144,14 +221,7 @@ Feature: Booking home - select a family member and start a booking
     Then I should be on the "<screen>" screen
 
     Examples:
-      | tab      | screen   |
-      | Visits   | Visits   |
-      | Payments | Payments |
-      | Family   | Family   |
-
-  @navigation
-  Scenario: Tapping an upcoming visit opens its status screen
-    Given I have a booking "PC-2481" in state "WAITING"
-    And I am on the Home screen
-    When I tap the upcoming visit "PC-2481"
-    Then I should be on the "B5 Finding caretaker" screen for "PC-2481"
+      | tab      | screen         |
+      | Visits   | B7 My visits   |
+      | Payments | B8 Payments    |
+      | Family   | Family         |

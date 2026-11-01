@@ -1,5 +1,5 @@
 # Screen: B2 Visit date & purposes (User app)
-# Source: proxy-care-api-context.md (PRD v2.3) §4 B2, §2 "Visit purpose" enum
+# Source: proxy-care-ui-ux-state-for-api-design.md (PRD v2.3) §4 B2, §2 "Visit purpose" enum
 # Each selected purpose becomes a Service at the hospital; one 3-hr block covers all of them.
 
 @user-app @service-booking @B2

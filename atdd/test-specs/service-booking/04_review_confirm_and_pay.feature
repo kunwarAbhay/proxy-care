@@ -1,6 +1,6 @@
 # Screen: B4 Review · Confirm & Pay (User app) + shared gateway payment pattern
-# Source: proxy-care-api-context.md (PRD v2.3) §4 B4, §3 "Shared payment pattern", §2 pricing,
-#         booking state, cancellation policy; §7 payment states
+# Source: proxy-care-ui-ux-state-for-api-design.md (PRD v2.3) §4 B4, §3 "Shared payment pattern", §2 pricing,
+#         booking state, cancellation policy; §8 payment states
 # v2.3: Confirm & Pay redirects to a third-party payment gateway. The booking sits in
 #       PAYMENT_PENDING until the gateway confirms, then moves to WAITING and is broadcast.
 # Pricing: (wage x 3 h) + ₹400 margin + ₹99 platform fee
@@ -67,7 +67,7 @@ Feature: Review booking, accept policy and pay through the payment gateway
     And the cancellation policy should show:
       | case                        | refund         |
       | More than 8 h before pickup | <refund_early> |
-      | Less than 8 h before pickup | <refund_late>  |
+      | Within 8 h of pickup        | <refund_late>  |
       | No-show                     | No refund      |
 
     Examples:

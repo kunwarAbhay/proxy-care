@@ -1,7 +1,8 @@
 # Screen: B5 Finding caretaker - booking state WAITING (User app)
-# Source: proxy-care-api-context.md (PRD v2.3) §4 B5, §2 booking state + cancellation policy, §6 realtime
+# Source: proxy-care-ui-ux-state-for-api-design.md (PRD v2.3) §4 B5, §2 booking state + cancellation policy, §6 read models, §7 realtime
 # v2.3: shows "₹X paid" + receipt; cancellation refunds go to the bank / original payment method.
-# Timeout / no-caretaker state is "not yet designed" (§8) - tagged @pending-design
+# Cancellation is designed only from B5 (WAITING). Behaviour at exactly 8 h before pickup is unspecified (§9).
+# Timeout / no-caretaker state is "not yet designed" (§9) - tagged @pending-design
 
 @user-app @service-booking @B5
 Feature: Finding a caretaker after payment
@@ -50,7 +51,7 @@ Feature: Finding a caretaker after payment
     Given I tapped "Back to home" from the "B5 Finding caretaker" screen
     When caretaker "Anita Verma" accepts booking "PC-2481"
     Then I should receive a push notification "Caretaker assigned for Kamla's visit"
-    And the upcoming visit card for "PC-2481" should show "Caretaker assigned"
+    And the "Upcoming" tab of "B7 My visits" should show "PC-2481" with the status "Caretaker assigned · Anita Verma"
     When I tap the notification
     Then I should be on the "B6 Caretaker assigned" screen
 
@@ -73,26 +74,41 @@ Feature: Finding a caretaker after payment
   # ---------- Cancellation (refund to bank) ----------
 
   @happy-path
-  Scenario Outline: Cancel booking shows the bank refund per policy
+  Scenario Outline: Cancel booking quotes and applies the bank refund per policy
     Given the current time is "<now>"
     And I am on the "B5 Finding caretaker" screen
     When I tap "Cancel booking"
     Then a confirmation dialog should open
-    And the dialog should show the refund "<refund>" and the deduction "<deduction>"
-    And the dialog should say the refund goes to my bank account or original payment method
+    And the dialog should show the pickup "Mon, 2 Nov, 10:00 AM" and the time remaining "<remaining>"
+    And the dialog should show the policy line for this case
+    And the dialog should show "You paid" "₹1,249"
+    And the dialog should show the deduction "<deduction>" with the reason "<reason>"
+    And the dialog should show the refund "<refund>"
+    And the dialog should say the refund goes to my bank account or original payment method in 5–7 working days
+    And I should see the buttons "Yes, cancel booking" and "Keep booking"
     When I tap "Yes, cancel booking"
     Then the booking state should be "CANCELLED"
-    And a refund of "<refund>" should be created to my original payment method
+    And the cancellation should be recorded with policy case "<policy_case>"
+    And a refund of "<refund>" should be created to my bank account or original payment method
     And I should see the toast "Booking cancelled. <refund> will be refunded to your bank"
     And I should be on the "B1 Home" screen
-    And the upcoming visits should not include "PC-2481"
+    And the "Upcoming" tab of "B7 My visits" should not include "PC-2481"
+    And the "Past" tab of "B7 My visits" should show "PC-2481" with the status "Cancelled · <refund> refunded"
 
     Examples:
-      | now              | refund | deduction |
-      | 2026-10-31 19:50 | ₹1,150 | ₹99       |
-      | 2026-11-02 01:59 | ₹1,150 | ₹99       |
-      | 2026-11-02 02:01 | ₹400   | ₹849      |
-      | 2026-11-02 09:30 | ₹400   | ₹849      |
+      | now              | remaining  | policy_case  | refund | deduction | reason                              |
+      | 2026-10-31 19:50 | 38 h 10 min | MORE_THAN_8H | ₹1,150 | ₹99       | Platform fee                        |
+      | 2026-11-02 01:59 | 8 h 1 min   | MORE_THAN_8H | ₹1,150 | ₹99       | Platform fee                        |
+      | 2026-11-02 02:01 | 7 h 59 min  | WITHIN_8H    | ₹400   | ₹849      | 3-hr caretaker wage (₹750) + ₹99    |
+      | 2026-11-02 09:30 | 30 min      | WITHIN_8H    | ₹400   | ₹849      | 3-hr caretaker wage (₹750) + ₹99    |
+
+  @access-control @security
+  Scenario: Another User cannot cancel this booking
+    Given I am authenticated as User "Priya Nair"
+    When I call "cancel booking" for "PC-2481"
+    Then the server should respond with "403 Forbidden"
+    And the booking state should be "WAITING"
+    And no refund should be created
 
   @negative
   Scenario: Dismissing the cancel dialog keeps the booking
@@ -108,8 +124,11 @@ Feature: Finding a caretaker after payment
     Given I am on the "B5 Finding caretaker" screen
     And I have opened the cancel booking dialog
     When caretaker "Anita Verma" accepts booking "PC-2481"
-    Then the cancel dialog should update to show that a caretaker has been assigned
-    And the refund amount should still follow the cancellation policy
+    Then the cancel dialog should close
+    And I should see the banner "Anita Verma accepted your visit"
+    And I should be taken to the "B6 Caretaker assigned" screen
+    And the booking state should be "ASSIGNED"
+    And no refund should be created
 
   @realtime
   Scenario: Cancelling withdraws the request from caretakers
@@ -145,7 +164,7 @@ Feature: Finding a caretaker after payment
     Given I am on the "B5 Finding caretaker" screen
     When I tap "Back to home"
     Then I should be on the "B1 Home" screen
-    And the upcoming visits should show "PC-2481" with status "Finding caretaker"
+    And the "Upcoming" tab of "B7 My visits" should show "PC-2481" with the status "Finding a caretaker"
 
   @navigation
   Scenario: Device back from B5 goes Home, not back to payment
