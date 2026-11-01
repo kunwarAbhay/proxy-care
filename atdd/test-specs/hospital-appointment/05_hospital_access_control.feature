@@ -39,6 +39,7 @@ Feature: Role-based visibility and access rules during the hospital phase
       | state     | endpoint            |
       | ASSIGNED  | start service       |
       | ASSIGNED  | create hospital bill |
+      | ASSIGNED  | attach hospital bill |
       | COMPLETED | complete service    |
       | COMPLETED | create hospital bill |
       | CANCELLED | start service       |
@@ -59,10 +60,13 @@ Feature: Role-based visibility and access rules during the hospital phase
       | Suresh Yadav | start service        | 403 Forbidden |
       | Suresh Yadav | complete service     | 403 Forbidden |
       | Suresh Yadav | create hospital bill | 403 Forbidden |
+      | Suresh Yadav | attach hospital bill | 403 Forbidden |
       | Anita Sharma | start service        | 403 Forbidden |
       | Anita Sharma | complete service     | 403 Forbidden |
       | Anita Sharma | create hospital bill | 403 Forbidden |
+      | Anita Sharma | attach hospital bill | 403 Forbidden |
       | Vikram Mehta | start service        | 403 Forbidden |
+      | Vikram Mehta | attach hospital bill | 403 Forbidden |
 
   @negative
   Scenario: An unassigned caretaker cannot see the visit
@@ -96,7 +100,19 @@ Feature: Role-based visibility and access rules during the hospital phase
     Given I am logged in to the User app as "Vikram Mehta"
     When I open a deep link to the hospital payment request for booking "PC-2481"
     Then I should see "This request isn't available"
-    And I should not see the amount, bill image or merchant
+    And I should not see the amount, description or merchant
+
+  @negative @api
+  Scenario: Only the sponsoring user and assigned caretaker can read the attached hospital bill
+    Given a hospital bill with status "BILL_ATTACHED" exists for booking "PC-2481"
+    When "Vikram Mehta" requests the attached hospital bill
+    Then the server should respond with "403 Forbidden"
+    When "Suresh Yadav" requests the attached hospital bill
+    Then the server should respond with "403 Forbidden"
+    When "Anita Sharma" requests the attached hospital bill
+    Then the server should return the file
+    When "Ramesh Kumar" requests the attached hospital bill
+    Then the server should return the file
 
   # ---------------------------------------------------------------------------
   # Integrity of the bill and the payment
@@ -107,6 +123,41 @@ Feature: Role-based visibility and access rules during the hospital phase
     Given a "₹500" hospital payment request exists for booking "PC-2481"
     When the user app sends a gateway order request with amount "₹50"
     Then the gateway order should be created for "₹500"
+
+  @negative @api
+  Scenario: An amount carried by the QR cannot be overridden by the caretaker
+    Given a verified hospital QR carries the amount "₹500"
+    When the caretaker app creates a hospital bill for that QR with amount "₹5,000"
+    Then the hospital bill should be created for "₹500"
+    And the hospital bill should have amount source "QR"
+
+  @api
+  Scenario: A typed amount is accepted only when the QR has no amount
+    Given a verified hospital QR carries no amount
+    When the caretaker app creates a hospital bill for that QR with amount "₹650"
+    Then the hospital bill should be created for "₹650"
+    And the hospital bill should have amount source "MANUAL"
+
+  @negative @api
+  Scenario: A hospital bill cannot be created without a description
+    Given a verified hospital QR carries the amount "₹500"
+    When the caretaker app creates a hospital bill for that QR with no description
+    Then the server should reject the request
+    And no payment request should be created
+
+  @negative @api
+  Scenario Outline: The hospital's bill can only be attached after the family has paid
+    Given a hospital bill with status "<status>" exists for booking "PC-2481"
+    When caretaker "Ramesh Kumar" calls "attach hospital bill" for that bill
+    Then the server should respond with error "BILL_NOT_ATTACHABLE"
+    And the hospital bill should still have status "<status>"
+
+    Examples:
+      | status            |
+      | QR_MISMATCH       |
+      | PAYMENT_REQUESTED |
+      | DISPUTED          |
+      | BILL_ATTACHED     |
 
   @negative @api
   Scenario: A QR_MISMATCH bill can never be paid
@@ -121,6 +172,7 @@ Feature: Role-based visibility and access rules during the hospital phase
     Then the payment request should remain "PAYING"
     When a gateway webhook with a valid signature confirms the payment
     Then the payment request should become "PAID"
+    And the hospital bill should have status "PAID_BILL_PENDING"
 
   @negative @api
   Scenario: Duplicate gateway webhooks are processed once

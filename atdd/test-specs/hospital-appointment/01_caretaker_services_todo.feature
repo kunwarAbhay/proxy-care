@@ -10,6 +10,7 @@ Feature: Caretaker hospital services to-do list (H1)
     - "Start" is enabled only when PENDING; "Complete" only when STARTED.
     - A COMPLETED card is fully read-only.
     - "Leave hospital" is enabled only when every service is COMPLETED.
+    - Visit stage is AT_HOSPITAL here; back from H1 goes to P1 Home, whose resume arrow reopens H1.
 
   Background:
     Given I am logged in to the Caretaker app as an approved caretaker "Ramesh Kumar"
@@ -29,6 +30,7 @@ Feature: Caretaker hospital services to-do list (H1)
     When I tap "Continue"
     Then I should be on the "Services to-do" screen (H1)
     And the timeline event "Reached hospital" should be recorded for booking "PC-2481"
+    And the visit stage of booking "PC-2481" should be "AT_HOSPITAL"
 
   @navigation
   Scenario: Continue stays disabled on P9a until the family pays for the ride
@@ -44,6 +46,7 @@ Feature: Caretaker hospital services to-do list (H1)
     When I tap "I've reached the hospital"
     Then I should be on the "Services to-do" screen (H1)
     And no ride payment request should exist for leg "TO_HOSPITAL"
+    And the visit stage of booking "PC-2481" should be "AT_HOSPITAL"
 
   # ---------------------------------------------------------------------------
   # Display
@@ -164,6 +167,18 @@ Feature: Caretaker hospital services to-do list (H1)
     Then exactly one start request should be sent for "Diagnostics"
     And the service card "Diagnostics" should show the badge "Procedure started"
 
+  @ui-state @negative
+  Scenario: Start updates optimistically and rolls back if the server fails
+    Given the service "Diagnostics" has status "PENDING"
+    And the start request for "Diagnostics" will fail
+    And I am on the "Services to-do" screen
+    When I tap "Start" on the service card "Diagnostics"
+    Then the service card "Diagnostics" should immediately show the badge "Procedure started"
+    When the start request fails
+    Then the service card "Diagnostics" should show the badge "Procedure pending"
+    And the "Start" button on "Diagnostics" should be enabled
+    And the service "Diagnostics" should still have status "PENDING"
+
   # ---------------------------------------------------------------------------
   # Leave hospital
   # ---------------------------------------------------------------------------
@@ -198,8 +213,7 @@ Feature: Caretaker hospital services to-do list (H1)
       | COMPLETED | COMPLETED | enabled  | 2 of 2 completed  |
 
   Scenario: Leaving the hospital with no bill scanned (pre-booked appointment)
-    Given booking "PC-2481" was marked as pre-booked
-    And every service on booking "PC-2481" has status "COMPLETED"
+    Given every service on booking "PC-2481" has status "COMPLETED"
     And no hospital bill exists for booking "PC-2481"
     When I tap "Leave hospital"
     Then I should be on the "Going home: book ride or skip" screen (D1)
@@ -223,11 +237,13 @@ Feature: Caretaker hospital services to-do list (H1)
 
   Scenario: Existing bills are listed on the Scan QR card
     Given booking "PC-2481" has a hospital bill of "₹500" with status "PAYMENT_REQUESTED"
-    And booking "PC-2481" has a hospital bill of "₹1,200" with status "PAID"
+    And booking "PC-2481" has a hospital bill of "₹1,200" with status "PAID_BILL_PENDING"
+    And booking "PC-2481" has a hospital bill of "₹300" with status "BILL_ATTACHED"
     When I open the "Services to-do" screen
-    Then the "Scan QR" card should list 2 bills
+    Then the "Scan QR" card should list 3 bills
     And the bill "₹500" should show the status "Payment requested"
-    And the bill "₹1,200" should show the status "Paid"
+    And the bill "₹1,200" should show the status "Paid · attach hospital bill"
+    And the bill "₹300" should show the status "Hospital bill attached"
     When I tap the bill "₹500"
     Then I should be on the "Bill status" screen (H3) for that bill
 
@@ -268,7 +284,10 @@ Feature: Caretaker hospital services to-do list (H1)
   Scenario: State is preserved after the app is killed and reopened
     Given the service "Diagnostics" has status "STARTED"
     When I force close and reopen the Caretaker app
-    Then I should land on the "Services to-do" screen for booking "PC-2481"
+    Then I should be on the "Home" screen (P1)
+    And the ongoing visit card should show booking "PC-2481" with the stage badge "At hospital"
+    When I tap the resume arrow on the ongoing visit card
+    Then I should be on the "Services to-do" screen (H1) for booking "PC-2481"
     And the service card "Diagnostics" should show the badge "Procedure started"
 
   # ---------------------------------------------------------------------------
@@ -276,10 +295,11 @@ Feature: Caretaker hospital services to-do list (H1)
   # ---------------------------------------------------------------------------
 
   @navigation
-  Scenario: Back from H1 does not return to the ride flow
+  Scenario: Back from H1 goes to Home and the resume arrow returns to H1
     Given I reached the "Services to-do" screen from the "Ride payment" screen
     When I press the device back button
     Then I should not return to the "Ride payment" screen
-    And I should be on the "My visits" screen (P3) with booking "PC-2481" under "Today"
-    When I open booking "PC-2481"
-    Then I should be on the "P1 Caretaker · home (ongoing visits)" screen
+    And I should be on the "Home" screen (P1)
+    And the ongoing visit card should show booking "PC-2481" with the stage badge "At hospital"
+    When I tap the resume arrow on the ongoing visit card
+    Then I should be on the "Services to-do" screen (H1)

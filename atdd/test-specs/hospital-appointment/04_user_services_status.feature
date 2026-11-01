@@ -27,11 +27,12 @@ Feature: User follows hospital services and calls the caretaker (H6)
     When I tap "Continue"
     Then I should be on the "Services status" screen (H6)
 
+  # The design has no route from B1 or U2 to H6 (context §4), so the H6 entry for this path is not specified here.
   @navigation
-  Scenario: Reaching H6 when the caretaker used own transport
+  Scenario: Hospital arrival when the caretaker used own transport
     Given the caretaker marked "I've reached the hospital" with mode "Family car"
-    When I open booking "PC-2481" from the home screen
-    Then I should be on the "Services status" screen (H6)
+    When I open the "Home" screen (B1)
+    Then the ongoing visit card should show the stage badge "At hospital"
     And I should not have seen any ride payment request for leg "TO_HOSPITAL"
 
   # ---------------------------------------------------------------------------
@@ -185,6 +186,6 @@ Feature: User follows hospital services and calls the caretaker (H6)
     Given I am on the "Services status" screen
     When I press the device back button
     Then I should be on the "Home" screen (B1)
-    And I should see booking "PC-2481" as an ongoing visit
-    When I tap the ongoing visit card
-    Then I should be on the "Services status" screen
+    And I should see booking "PC-2481" as an ongoing visit with the stage badge "At hospital"
+    When I tap the arrow on the ongoing visit card
+    Then I should be on the "Visit timeline" screen (U2)
