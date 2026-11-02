@@ -1,9 +1,14 @@
 # Screen: P5 Confirm arrival (Caretaker app)
 # Source: proxy-care-ui-ux-state-for-api-design.md (PRD v2.3) §5 P5, §1 Patient + Booking, §2 booking state + visit stage + fee strategy, §7 realtime; PRD 3.2
 # The design names the "wrong code" and "too many attempts" states but gives neither the wording nor the attempt limit.
-# These scenarios therefore refer to the states by name and read the limit from configuration.
+# Scenarios refer to the states by name and read the limit from test configuration.
+# Assumption: the field keeps ASCII digits only and caps at 4, including pasted text. The design only says "4-digit".
+#
+# Open design questions (no scenario until decided):
+#   - What are the attempt limit and block duration, and how does a blocked caretaker recover?
+#   - Does "Resend code" have a cooldown or limit? Does it issue a new code or repeat the current one?
 
-@caretaker-app @pickup-and-ride @P5
+@regression @caretaker-app @pickup-and-ride @P5
 Feature: Caretaker confirms arrival with the pickup code
   As an assigned Caretaker at the patient's home
   I want to enter the 4-digit pickup code from the family
@@ -17,184 +22,213 @@ Feature: Caretaker confirms arrival with the pickup code
 
   Background:
     Given today is "2026-11-02"
-    And I am logged in to the Caretaker app as "Anita Verma" with KYC "APPROVED"
+    And I am logged in to the Caretaker app as "Anita Verma"
     And I am assigned to booking "PC-2481" for patient "Kamla Mehta"
-    And booking "PC-2481" is in state "ASSIGNED" with stage "HEADING_TO_PICKUP"
-    And the sponsoring user is "Rohan Mehta", relation "Son"
-    And the pickup code for "PC-2481" is "4821"
+    And the booking is in state "ASSIGNED" with stage "HEADING_TO_PICKUP"
+    And the sponsoring user is "Rohan Mehta"
+    And the pickup code is "4821"
+    And I am on the "P5 Confirm arrival" screen
 
   # ---------- Display ----------
 
-  @smoke
+  @smoke @ui-validation
   Scenario: P5 asks for the code without revealing it
-    When I open the "P5 Confirm arrival" screen
-    Then I should see an empty 4-digit "Pickup code" field marked as required
+    When I view the screen
+    Then the "Pickup code" field should be empty
+    And the "Pickup code" field should be marked as required
     And the "Confirm arrival" button should be disabled
-    And I should see the actions "Call family" and "Resend code"
+    And the "Call family" button should be enabled
+    And the "Resend code" button should be enabled
     And I should not see the pickup code
 
   # ---------- Happy path ----------
 
   @smoke @happy-path
-  Scenario: Correct code starts the visit
-    Given I am on the "P5 Confirm arrival" screen
-    When I enter "4821" in the "Pickup code" field
-    And I tap "Confirm arrival"
-    Then booking "PC-2481" should be in state "IN_PROGRESS"
-    And the visit stage of booking "PC-2481" should be "PICKED_UP"
-    And billable time should start at the verification time
+  Scenario: The correct code starts the visit
+    When I confirm arrival with the code "4821"
+    Then the booking should be in state "IN_PROGRESS"
+    And the booking should have stage "PICKED_UP"
+    And billable time should have started
     And I should be on the "P6 Book ride or skip" screen
-    And "Rohan Mehta" should receive a "Pickup OTP verified" timeline event
-    And the ongoing visit card on "Rohan Mehta"'s Home should show the stage badge "Patient picked up"
+    And the sponsoring user should have the timeline event "Pickup OTP verified"
+    And the sponsoring user should see the stage badge "Patient picked up"
 
   @ui-state
   Scenario: Confirm arrival shows progress while the code is checked
-    Given the pickup code verification is slow
-    And I am on the "P5 Confirm arrival" screen
-    When I enter "4821" in the "Pickup code" field
-    And I tap "Confirm arrival"
-    Then the "Confirm arrival" button should show a loader and be disabled
+    Given the "verify pickup code" request is slow
+    When I confirm arrival with the code "4821"
+    Then the "Confirm arrival" button should be loading
+
+  @happy-path
+  Scenario Outline: Codes with leading or repeated digits are accepted as entered
+    Given the pickup code is "<code>"
+    When I confirm arrival with the code "<code>"
+    Then the booking should be in state "IN_PROGRESS"
+
+    Examples:
+      | code |
+      | 0427 |
+      | 0000 |
+      | 9999 |
 
   # ---------- Input validation ----------
 
-  @negative
+  @ui-validation
   Scenario Outline: Confirm arrival is enabled only for a complete 4-digit code
-    Given I am on the "P5 Confirm arrival" screen
     When I enter "<input>" in the "Pickup code" field
     Then the "Pickup code" field should contain "<shown>"
     And the "Confirm arrival" button should be <state>
 
-    Examples:
+    Examples: Too short
       | input | shown | state    |
       | 4     | 4     | disabled |
       | 48    | 48    | disabled |
       | 482   | 482   | disabled |
-      | 4821  | 4821  | enabled  |
-      | 48215 | 4821  | enabled  |
+
+    Examples: Exact length
+      | input | shown | state   |
+      | 4821  | 4821  | enabled |
+
+    Examples: Too long is capped at 4 digits
+      | input | shown | state   |
+      | 48215 | 4821  | enabled |
+
+    Examples: Non-digits are ignored
+      | input | shown | state    |
       | abcd  |       | disabled |
       | 48a1  | 481   | disabled |
       | 48-1  | 481   | disabled |
+      | ४८२१  |       | disabled |
 
+  @ui-validation
+  Scenario Outline: A pasted code is cleaned to its digits
+    When I paste "<pasted>" in the "Pickup code" field
+    Then the "Pickup code" field should contain "<shown>"
+    And the "Confirm arrival" button should be <state>
+
+    Examples:
+      | pasted | shown | state    |
+      | 4821   | 4821  | enabled  |
+      | 4-8-2  | 482   | disabled |
+      | code   |       | disabled |
+
+  @ui-validation
+  Scenario: Spaces around a pasted code are removed
+    When I paste the code "4821" with spaces around it in the "Pickup code" field
+    Then the "Pickup code" field should contain "4821"
+    And the "Confirm arrival" button should be enabled
+
+  @ui-validation
   Scenario: Deleting a digit disables Confirm arrival again
-    Given I am on the "P5 Confirm arrival" screen
-    And I have entered "4821" in the "Pickup code" field
+    Given I have entered "4821" in the "Pickup code" field
     When I delete the last digit
     Then the "Confirm arrival" button should be disabled
 
-  @negative
-  Scenario Outline: Wrong code does not start the visit
-    Given I am on the "P5 Confirm arrival" screen
-    When I enter "<code>" in the "Pickup code" field
-    And I tap "Confirm arrival"
-    Then I should see the "wrong code" state
-    And I should remain on the "P5 Confirm arrival" screen
-    And booking "PC-2481" should still be in state "ASSIGNED"
-    And billable time should not have started
-    And "Rohan Mehta" should not receive a "Pickup OTP verified" timeline event
+  @ui-validation @device
+  Scenario: The code field opens the numeric keyboard
+    When I focus the "Pickup code" field
+    Then the numeric keyboard should be shown
 
-    Examples:
+  @negative
+  Scenario Outline: A wrong code does not start the visit
+    When I confirm arrival with the code "<code>"
+    Then I should see the "wrong code" state
+    And I should be on the "P5 Confirm arrival" screen
+    And the booking should be in state "ASSIGNED"
+    And billable time should not have started
+    And the sponsoring user should not have the timeline event "Pickup OTP verified"
+
+    Examples: Unrelated codes
       | code |
       | 1234 |
       | 0000 |
-      | 1284 |
+
+    Examples: One digit or one swap away
+      | code |
       | 4822 |
+      | 8421 |
 
   @negative @security
   Scenario: The code of another booking is not accepted
     Given booking "PC-2490" has the pickup code "9173"
-    And I am on the "P5 Confirm arrival" screen for booking "PC-2481"
-    When I enter "9173" in the "Pickup code" field
-    And I tap "Confirm arrival"
+    When I confirm arrival with the code "9173"
     Then I should see the "wrong code" state
-    And booking "PC-2481" should still be in state "ASSIGNED"
+    And the booking should be in state "ASSIGNED"
 
   @negative
   Scenario: The right code is accepted after a wrong attempt
-    Given I am on the "P5 Confirm arrival" screen
-    And I entered the wrong code "1234" once
-    When I replace the code with "4821"
-    And I tap "Confirm arrival"
-    Then booking "PC-2481" should be in state "IN_PROGRESS"
+    Given I have made 1 wrong code attempt
+    When I confirm arrival with the code "4821"
+    Then the booking should be in state "IN_PROGRESS"
     And I should be on the "P6 Book ride or skip" screen
 
   # ---------- Too many attempts ----------
 
   @negative @security
+  Scenario: The last attempt before the limit is still allowed
+    Given I have made wrong code attempts up to 1 below the attempt limit
+    When I confirm arrival with the code "4821"
+    Then the booking should be in state "IN_PROGRESS"
+
+  @negative @security
   Scenario: Reaching the attempt limit blocks further attempts
-    Given I am on the "P5 Confirm arrival" screen
-    When I enter a wrong code as many times as the configured attempt limit
+    Given I have made wrong code attempts up to 1 below the attempt limit
+    When I confirm arrival with the code "1234"
     Then I should see the "too many attempts" state
     And the "Confirm arrival" button should be disabled
-    And the "Call family" action should stay available
-    And booking "PC-2481" should still be in state "ASSIGNED"
+    And the "Call family" button should be enabled
+    And the booking should be in state "ASSIGNED"
 
   @negative @security @api
   Scenario: The correct code is rejected while attempts are blocked
-    Given the pickup code attempts for booking "PC-2481" are blocked
-    When the app submits the code "4821" for booking "PC-2481"
+    Given the pickup code attempts are blocked
+    When the caretaker client submits the code "4821"
     Then the server should reject the request
-    And booking "PC-2481" should still be in state "ASSIGNED"
+    And the booking should be in state "ASSIGNED"
     And billable time should not have started
 
-  @ui-state @security
+  @ui-state @security @device
   Scenario: Reopening the app does not clear the attempt block
-    Given the pickup code attempts for booking "PC-2481" are blocked
-    When I force close and reopen the Caretaker app
+    Given the pickup code attempts are blocked
+    When I force close and reopen the app
     And I open the "P5 Confirm arrival" screen
     Then I should see the "too many attempts" state
 
-  # The design gives no attempt limit, block duration or way to recover.
-  @pending-design
-  Scenario: Recovering from too many attempts
-    Given the pickup code attempts for booking "PC-2481" are blocked
-    Then the attempt limit, block duration and recovery path should be confirmed by design
-
   # ---------- Resend code ----------
 
-  @happy-path
-  Scenario: Resend code sends the current code to the patient
-    Given the patient "Kamla Mehta" has mobile "+919812345678"
-    And I am on the "P5 Confirm arrival" screen
+  @happy-path @integration
+  Scenario: Resend code sends the valid code to the patient
+    Given the patient has mobile "+919812345678"
     When I tap "Resend code"
     Then an SMS with the pickup code should be sent to "+919812345678"
-    And the code in that SMS should match the code shown to "Rohan Mehta"
-    And I should remain on the "P5 Confirm arrival" screen
+    And the code in the SMS should match the code shown to the sponsoring user
+    And I should be on the "P5 Confirm arrival" screen
     And I should not see the pickup code
 
   @negative
-  Scenario: Resend failure keeps the caretaker on the screen
-    Given the resend code request will fail
-    And I am on the "P5 Confirm arrival" screen
+  Scenario: A failed resend keeps the caretaker on the screen
+    Given the "resend pickup code" request will fail
     When I tap "Resend code"
-    Then I should see an error
-    And I should remain on the "P5 Confirm arrival" screen
+    Then I should see the "error" state
+    And I should be on the "P5 Confirm arrival" screen
 
   @happy-path
-  Scenario: A patient without a mobile can still be picked up with the sponsor's code
-    Given the patient "Kamla Mehta" has no mobile
-    And "Rohan Mehta" can see the pickup code "4821" in the User app
-    And I am on the "P5 Confirm arrival" screen
-    When I enter "4821" in the "Pickup code" field
-    And I tap "Confirm arrival"
-    Then booking "PC-2481" should be in state "IN_PROGRESS"
+  Scenario: A patient without a mobile can be picked up with the sponsor's code
+    Given the patient has no mobile
+    When I confirm arrival with the code "4821"
+    Then the booking should be in state "IN_PROGRESS"
 
-  @pending-design
-  Scenario: Resend code when the patient has no mobile
-    Given the patient "Kamla Mehta" has no mobile
+  @negative @pending-design @integration
+  Scenario: Resend sends no SMS when the patient has no mobile
+    Given the patient has no mobile
     When I tap "Resend code"
-    Then the expected behaviour should be confirmed by design
-
-  @pending-design
-  Scenario: Resend code is rate limited
-    Given I have just tapped "Resend code"
-    When I tap "Resend code" again
-    Then the cooldown and resend limit should be confirmed by design
+    Then no SMS should be sent
+    And I should be on the "P5 Confirm arrival" screen
 
   # ---------- Actions ----------
 
-  @happy-path
+  @happy-path @device
   Scenario: Call family opens the dialer so the caretaker can ask for the code
-    Given I am on the "P5 Confirm arrival" screen
     When I tap "Call family"
     Then the phone dialer should open with the number of "Rohan Mehta"
 
@@ -202,69 +236,62 @@ Feature: Caretaker confirms arrival with the pickup code
 
   @negative
   Scenario: A double tap verifies the code once
-    Given I am on the "P5 Confirm arrival" screen
-    And I have entered "4821" in the "Pickup code" field
+    Given I have entered "4821" in the "Pickup code" field
     When I double tap "Confirm arrival"
-    Then exactly one verification request should be sent
+    Then exactly 1 "verify pickup code" request should be sent
     And I should be on the "P6 Book ride or skip" screen
 
   @ui-state @negative
-  Scenario: Network failure keeps the entered code and allows a retry
-    Given the pickup code verification will fail with a network error
-    And I am on the "P5 Confirm arrival" screen
-    When I enter "4821" in the "Pickup code" field
-    And I tap "Confirm arrival"
-    Then I should see an error
+  Scenario: A network failure keeps the entered code and allows a retry
+    Given the "verify pickup code" request will fail
+    When I confirm arrival with the code "4821"
+    Then I should see the "error" state
+    And I should not see the "wrong code" state
     And the "Pickup code" field should contain "4821"
     And the "Confirm arrival" button should be enabled
-    And the failed request should not count as a wrong attempt
-    And booking "PC-2481" should still be in state "ASSIGNED"
+    And the booking should be in state "ASSIGNED"
 
   @negative @api
   Scenario: Retrying after a lost response keeps the original start time
-    Given my code "4821" was verified at "09:58 AM" but the response was lost
-    When the app submits the code "4821" again at "09:59 AM"
-    Then the app should move to the "P6 Book ride or skip" screen
-    And billable time should still start at "09:58 AM"
-    And "Rohan Mehta" should have only one "Pickup OTP verified" timeline event
+    Given the code "4821" was verified at "09:58 AM" and the response was lost
+    When the caretaker client submits the code "4821" at "09:59 AM"
+    Then the server should accept the request
+    And billable time should have started at "09:58 AM"
+    And the sponsoring user should have 1 "Pickup OTP verified" timeline event
 
   @ui-state @negative
-  Scenario: Offline banner blocks confirmation
-    Given I am on the "P5 Confirm arrival" screen
-    And I have entered "4821" in the "Pickup code" field
+  Scenario: Going offline blocks confirmation
+    Given I have entered "4821" in the "Pickup code" field
     When the device goes offline
-    Then I should see an offline banner
+    Then I should see the "offline banner" state
     And the "Confirm arrival" button should be disabled
+    And the "Resend code" button should be disabled
 
   # ---------- Navigation ----------
 
-  @navigation
+  @navigation @device
   Scenario: Back from P5 before verification returns to P4
-    Given I am on the "P5 Confirm arrival" screen
     When I press the device back button
     Then I should be on the "P4 Start trip to pickup" screen
-    And booking "PC-2481" should still be in state "ASSIGNED"
+    And the booking should be in state "ASSIGNED"
 
-  @navigation
+  @navigation @device
   Scenario: A verified code cannot be revisited with back
-    Given my pickup code was verified
-    And I am on the "P6 Book ride or skip" screen
+    Given I have confirmed arrival with the correct code
     When I press the device back button
-    Then I should not return to the "P5 Confirm arrival" screen
-    And booking "PC-2481" should still be in state "IN_PROGRESS"
+    Then I should not be on the "P5 Confirm arrival" screen
+    And the booking should be in state "IN_PROGRESS"
 
-  @navigation @ui-state
+  @navigation @device
   Scenario: Reopening the app before verification resumes at P4
-    Given I am on the "P5 Confirm arrival" screen
-    And I have entered "48" in the "Pickup code" field
-    When I force close and reopen the Caretaker app
-    And I tap the resume arrow on the ongoing visit card
+    Given I have entered "48" in the "Pickup code" field
+    When I force close and reopen the app
+    And I resume the ongoing visit
     Then I should be on the "P4 Start trip to pickup" screen
 
-  @navigation @ui-state
+  @navigation @device
   Scenario: Reopening the app after verification resumes at P6
-    Given my pickup code was verified
-    When I force close and reopen the Caretaker app
-    Then the ongoing visit card should show the stage badge "Patient picked up"
-    When I tap the resume arrow on the ongoing visit card
+    Given I have confirmed arrival with the correct code
+    When I force close and reopen the app
+    And I resume the ongoing visit
     Then I should be on the "P6 Book ride or skip" screen

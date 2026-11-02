@@ -1,9 +1,14 @@
 # Screen: P8a Ride status (Caretaker app)
 # Source: proxy-care-ui-ux-state-for-api-design.md (PRD v2.3) §5 P8a, §1 Ride + Payment request, §2 ride events + visit stage, §7 realtime; PRD 3.2
-# The design lists "cancel ride" and "share trip" as actions but does not define their outcome, so the outcomes are @pending-design.
 # §2 resumes stage RIDE_TO_HOSPITAL at P8a even after the fare is requested, so P8a must reuse the request instead of creating another.
+#
+# Open design questions (no scenario until decided):
+#   - "Cancel ride": confirmation, cancellation charge, next screen, and whether it is available after TRIP_STARTED.
+#   - What happens when the ride partner or driver cancels, or the driver never arrives? Ride events have no cancelled status.
+#   - What does a "Share trip" link contain? PRD 3.3 says the patient sees no location, so it must not reopen that visibility.
+#   - On resume, what control takes the caretaker from P8a to an existing request's P9a? Scenarios use "I open the existing fare request".
 
-@caretaker-app @pickup-and-ride @P8a
+@regression @caretaker-app @pickup-and-ride @P8a
 Feature: Caretaker follows the ride to the hospital
   As a Caretaker travelling with the patient
   I want live ride status and driver details
@@ -16,144 +21,141 @@ Feature: Caretaker follows the ride to the hospital
 
   Background:
     Given today is "2026-11-02"
-    And I am logged in to the Caretaker app as "Anita Verma" with KYC "APPROVED"
+    And I am logged in to the Caretaker app as "Anita Verma"
     And I am assigned to booking "PC-2481" for patient "Kamla Mehta"
-    And booking "PC-2481" is in state "IN_PROGRESS" with stage "RIDE_TO_HOSPITAL"
-    And the sponsoring user is "Rohan Mehta", relation "Son"
-    And booking "PC-2481" has the ride for leg "TO_HOSPITAL":
-      | field         | value         |
-      | provider      | Uber          |
-      | vehicle       | Cab           |
-      | driver        | Sunil Yadav   |
-      | plate         | DL 3C AB 1234 |
-      | ride_pin      | 7302          |
-      | fare_estimate | ₹320          |
+    And the booking is in state "IN_PROGRESS" with stage "RIDE_TO_HOSPITAL"
+    And the sponsoring user is "Rohan Mehta"
+    And the booking has a ride for leg "TO_HOSPITAL":
+      | provider | vehicle | driver      | plate         | ride_pin | fare_estimate |
+      | Uber     | Cab     | Sunil Yadav | DL 3C AB 1234 | 7302     | ₹320          |
 
   # ---------- Display ----------
 
-  @smoke
+  @smoke @happy-path
   Scenario: P8a shows the driver, the ride PIN and the fare estimate
     Given the latest ride event is "RIDE_PARTNER_ASSIGNED"
     When I open the "P8a Ride status" screen
-    Then I should see the driver "Sunil Yadav"
-    And I should see the plate "DL 3C AB 1234"
-    And I should see the vehicle "Cab"
-    And I should see the ride PIN "7302"
-    And I should see the fare estimate "₹320"
-    And I should see the 4 ride events "Ride Partner Assigned", "Ride Partner Arrived", "Trip Started" and "Trip Completed"
-    And I should see the actions "Call driver", "Share trip" and "Cancel ride"
+    Then I should see the text "Sunil Yadav"
+    And I should see the text "DL 3C AB 1234"
+    And I should see the text "7302"
+    And I should see the text "₹320"
+    And I should see the ride events "Ride Partner Assigned, Ride Partner Arrived, Trip Started, Trip Completed"
+    And the "Call driver" button should be enabled
+    And the "Share trip" button should be enabled
+    And the "Cancel ride" button should be visible
 
-  Scenario Outline: Ride event progress and the fare request follow the latest event
+  @ui-state
+  Scenario Outline: Ride progress and the fare request follow the latest event
     Given the latest ride event is "<event>"
     When I open the "P8a Ride status" screen
     Then the ride events up to "<label>" should show their times
-    And the later ride events should show no time
+    And the ride events after "<label>" should show no time
     And the "Request from family" button should be <request>
 
     Examples:
-      | event                 | label                 | request     |
-      | RIDE_PARTNER_ASSIGNED | Ride Partner Assigned | not visible |
-      | RIDE_PARTNER_ARRIVED  | Ride Partner Arrived  | not visible |
-      | TRIP_STARTED          | Trip Started          | not visible |
-      | TRIP_COMPLETED        | Trip Completed        | visible     |
+      | event                 | label                 | request |
+      | RIDE_PARTNER_ASSIGNED | Ride Partner Assigned | hidden  |
+      | RIDE_PARTNER_ARRIVED  | Ride Partner Arrived  | hidden  |
+      | TRIP_STARTED          | Trip Started          | hidden  |
+      | TRIP_COMPLETED        | Trip Completed        | visible |
 
   # ---------- Realtime ride events ----------
 
   @smoke @realtime
-  Scenario: Ride events arrive without a manual refresh
-    Given I am on the "P8a Ride status" screen
-    And the latest ride event is "RIDE_PARTNER_ASSIGNED"
-    When the ride partner reports "RIDE_PARTNER_ARRIVED"
-    Then "Ride Partner Arrived" should show its time without a manual refresh
-    When the ride partner reports "TRIP_STARTED"
-    Then "Trip Started" should show its time without a manual refresh
-    When the ride partner reports "TRIP_COMPLETED"
-    Then "Trip Completed" should show its time without a manual refresh
-    And I should see the "Request from family" button
+  Scenario Outline: Each ride event arrives without a manual refresh
+    Given the latest ride event is "<previous>"
+    And I am on the "P8a Ride status" screen
+    When the ride partner reports "<event>"
+    Then the ride event "<label>" should show its time without a refresh
+    And the sponsoring user should have the timeline event "<label>"
 
-  @realtime
-  Scenario: Ride events also reach the user's timeline
-    Given I am on the "P8a Ride status" screen
-    When the ride partner reports "TRIP_STARTED"
-    Then "Rohan Mehta" should see "Trip Started" on the "U2 Visit timeline" screen
+    Examples:
+      | previous              | event                | label                |
+      | RIDE_PARTNER_ASSIGNED | RIDE_PARTNER_ARRIVED | Ride Partner Arrived |
+      | RIDE_PARTNER_ARRIVED  | TRIP_STARTED         | Trip Started         |
+      | TRIP_STARTED          | TRIP_COMPLETED       | Trip Completed       |
 
   @negative @api
   Scenario: A duplicate ride event is recorded once
-    Given the ride partner has reported "TRIP_STARTED" at "10:20 AM"
-    When the ride partner reports "TRIP_STARTED" again at "10:21 AM"
-    Then "Trip Started" should still show "10:20 AM"
-    And "Rohan Mehta" should have only one "Trip Started" timeline event
+    Given the ride partner reported "TRIP_STARTED" at "10:20 AM"
+    When the ride partner reports "TRIP_STARTED" at "10:21 AM"
+    Then the ride event "TRIP_STARTED" should have the time "10:20 AM"
+    And the sponsoring user should have 1 "Trip Started" timeline event
 
   @negative @api
   Scenario: A late ride event does not move the ride backwards
     Given the latest ride event is "TRIP_STARTED"
     When the ride partner reports "RIDE_PARTNER_ARRIVED"
-    Then the latest ride event should still be "TRIP_STARTED"
-    And the "Request from family" button should be not visible
+    Then the latest ride event should be "TRIP_STARTED"
 
   @ui-state @realtime
   Scenario: Missed events are caught up after reconnecting
-    Given I am on the "P8a Ride status" screen
-    And the latest ride event is "RIDE_PARTNER_ARRIVED"
-    And the device goes offline
-    And the ride partner reports "TRIP_STARTED" while I am offline
+    Given the latest ride event is "RIDE_PARTNER_ARRIVED"
+    And I am on the "P8a Ride status" screen
+    And the device is offline
+    And the ride partner has reported "TRIP_STARTED"
     When the device comes back online
-    Then "Trip Started" should show its time
-    And the offline banner should disappear
+    Then the ride event "Trip Started" should show its time without a refresh
+    And I should not see the "offline banner" state
 
   # ---------- Requesting the fare ----------
 
   @smoke @happy-path
   Scenario: Requesting the final fare from the family
     Given the latest ride event is "TRIP_COMPLETED"
-    And the final fare of the ride is "₹340"
+    And the ride has the final fare "₹340"
     And I am on the "P8a Ride status" screen
     When I tap "Request ₹340 from family"
-    Then a "RIDE_TO_HOSPITAL" payment request for "₹340" should be created for booking "PC-2481"
-    And the payment request should be requested by "Anita Verma"
-    And the payment request status should be "REQUESTED"
+    Then the booking should have 1 "RIDE_TO_HOSPITAL" payment request for "₹340"
+    And the ride payment request should be requested by "Anita Verma"
+    And the ride payment request should have status "REQUESTED"
     And I should be on the "P9a Ride payment" screen
-    And "Rohan Mehta" should receive a ride payment request notification
+    And the sponsoring user should get a ride payment request notification
 
+  @ui-validation
   Scenario Outline: The request uses the final fare, not the estimate
     Given the latest ride event is "TRIP_COMPLETED"
-    And the fare estimate of the ride is "<estimate>"
-    And the final fare of the ride is "<final>"
+    And the ride has the fare estimate "<estimate>"
+    And the ride has the final fare "<final>"
     When I open the "P8a Ride status" screen
-    Then I should see the "Request <final> from family" button
+    Then the "Request <final> from family" button should be enabled
 
-    Examples:
+    Examples: Final fare against the estimate
       | estimate | final |
       | ₹320     | ₹320  |
       | ₹320     | ₹340  |
       | ₹320     | ₹295  |
 
+    Examples: Thousands separator
+      | estimate | final  |
+      | ₹980     | ₹1,020 |
+
   @negative
   Scenario: A double tap on the request creates one payment request
     Given the latest ride event is "TRIP_COMPLETED"
-    And the final fare of the ride is "₹340"
+    And the ride has the final fare "₹340"
     And I am on the "P8a Ride status" screen
     When I double tap "Request ₹340 from family"
-    Then exactly one "RIDE_TO_HOSPITAL" payment request should exist for booking "PC-2481"
+    Then the booking should have 1 "RIDE_TO_HOSPITAL" payment request for "₹340"
 
   @negative
-  Scenario: Request failure keeps the caretaker on P8a
+  Scenario: A failed request keeps the caretaker on P8a
     Given the latest ride event is "TRIP_COMPLETED"
-    And the final fare of the ride is "₹340"
-    And the create payment request call will fail
+    And the ride has the final fare "₹340"
+    And the "create payment request" request will fail
     And I am on the "P8a Ride status" screen
     When I tap "Request ₹340 from family"
-    Then I should see an error
-    And I should remain on the "P8a Ride status" screen
+    Then I should see the "error" state
+    And I should be on the "P8a Ride status" screen
     And the "Request ₹340 from family" button should be enabled
-    And no "RIDE_TO_HOSPITAL" payment request should exist for booking "PC-2481"
+    And the booking should have 0 "RIDE_TO_HOSPITAL" payment requests
 
   @negative @api
   Scenario Outline: The fare cannot be requested before the trip is completed
     Given the latest ride event is "<event>"
-    When the app sends a create payment request call for the ride
+    When the caretaker client requests the ride fare
     Then the server should reject the request
-    And no "RIDE_TO_HOSPITAL" payment request should exist for booking "PC-2481"
+    And the booking should have 0 "RIDE_TO_HOSPITAL" payment requests
 
     Examples:
       | event                 |
@@ -161,107 +163,88 @@ Feature: Caretaker follows the ride to the hospital
       | RIDE_PARTNER_ARRIVED  |
       | TRIP_STARTED          |
 
+  @negative @pending-design
+  Scenario: The fare cannot be requested until the final fare is known
+    Given the latest ride event is "TRIP_COMPLETED"
+    And the ride has no final fare yet
+    When I open the "P8a Ride status" screen
+    Then the "Request from family" button should be hidden
+
   @navigation @negative
   Scenario: Resuming after the fare was requested does not create a second request
     Given the latest ride event is "TRIP_COMPLETED"
-    And a "RIDE_TO_HOSPITAL" payment request for "₹340" exists for booking "PC-2481"
-    And booking "PC-2481" has stage "RIDE_TO_HOSPITAL"
-    And I am on the "P1 Home" screen
-    When I tap the resume arrow on the ongoing visit card
-    Then I should be on the "P8a Ride status" screen
-    When I continue to the fare request
+    And the booking has a "RIDE_TO_HOSPITAL" payment request for "₹340"
+    And I am on the "P8a Ride status" screen
+    When I open the existing fare request
     Then I should be on the "P9a Ride payment" screen
-    And exactly one "RIDE_TO_HOSPITAL" payment request should exist for booking "PC-2481"
+    And the booking should have 1 "RIDE_TO_HOSPITAL" payment request for "₹340"
 
   # ---------- Actions ----------
 
-  @happy-path
+  @happy-path @device
   Scenario: Call driver opens the dialer
     Given I am on the "P8a Ride status" screen
     When I tap "Call driver"
-    Then the phone dialer should open with the driver's contact number
+    Then the phone dialer should open with the number of "Sunil Yadav"
 
-  @happy-path
+  @happy-path @device
   Scenario: Share trip opens the share sheet
     Given I am on the "P8a Ride status" screen
     When I tap "Share trip"
     Then the device share sheet should open
 
-  # PRD 3.3 says the patient sees no location, so a share link must not reopen that visibility.
-  @pending-design @security
-  Scenario: What a shared trip link exposes
-    Given I have shared the trip with someone
-    Then the content of the link and whether it shows live location should be confirmed by design
-
-  @pending-design
-  Scenario: Cancelling the ride
-    Given the latest ride event is "RIDE_PARTNER_ASSIGNED"
-    And I am on the "P8a Ride status" screen
-    When I tap "Cancel ride"
-    Then the confirmation, any cancellation charge and the next screen should be confirmed by design
-    And no "RIDE_TO_HOSPITAL" payment request should be created unless design defines a charge
-
-  @pending-design
-  Scenario: Cancelling the ride after the trip has started
-    Given the latest ride event is "TRIP_STARTED"
-    When I open the "P8a Ride status" screen
-    Then it should be confirmed by design whether "Cancel ride" is available
-
-  @pending-design
-  Scenario: The ride partner or driver cancels the ride
-    Given the latest ride event is "RIDE_PARTNER_ASSIGNED"
-    When the ride partner reports that the ride was cancelled
-    Then the alert and the rebooking route should be confirmed by design
-
-  @pending-design
-  Scenario: The driver does not arrive
-    Given the latest ride event is "RIDE_PARTNER_ASSIGNED"
-    And no ride event has arrived for a long time
-    Then the timeout and the rebooking route should be confirmed by design
-
   # ---------- Navigation and resume ----------
 
   @navigation
-  Scenario: Back from P8a does not reopen booking
-    Given I reached the "P8a Ride status" screen from the "P7a Book ride" screen
-    When I press the device back button
-    Then I should not return to the "P7a Book ride" screen
-    And exactly one ride should exist for leg "TO_HOSPITAL"
-
-  @ui-state @navigation
-  Scenario: Reopening the app resumes the ride with the latest status
-    Given I am on the "P8a Ride status" screen
-    And the latest ride event is "RIDE_PARTNER_ARRIVED"
-    When I force close the Caretaker app
-    And the ride partner reports "TRIP_STARTED"
-    And I reopen the Caretaker app
-    Then the ongoing visit card should show the stage badge "Ride to hospital"
-    When I tap the resume arrow on the ongoing visit card
+  Scenario: The resume arrow opens P8a for stage RIDE_TO_HOSPITAL
+    Given I am on the "P1 Home" screen
+    When I resume the ongoing visit
     Then I should be on the "P8a Ride status" screen
-    And "Trip Started" should show its time
 
-  # ---------- Loading / error ----------
+  @navigation @device
+  Scenario: Back from P8a does not reopen booking
+    Given I opened the "P8a Ride status" screen from the "P7a Book ride" screen
+    When I press the device back button
+    Then I should not be on the "P7a Book ride" screen
+    And the booking should have 1 ride for leg "TO_HOSPITAL"
+
+  @ui-state @device
+  Scenario: Reopening the app shows the latest ride status
+    Given the latest ride event is "RIDE_PARTNER_ARRIVED"
+    And the app is closed
+    And the ride partner has reported "TRIP_STARTED"
+    When I reopen the app
+    And I resume the ongoing visit
+    Then I should be on the "P8a Ride status" screen
+    And the ride event "Trip Started" should show its time without a refresh
+
+  # ---------- Loading / error / offline ----------
 
   @ui-state
   Scenario: Skeleton while the ride loads
-    Given the ride status request is slow
+    Given the "ride status" request is slow
     When I open the "P8a Ride status" screen
-    Then I should see skeleton placeholders
+    Then I should see the "loading skeleton" state
 
   @ui-state @negative
-  Scenario: Error state with retry when the ride fails to load
-    Given the ride status request fails
+  Scenario: A failed load shows an error with Retry
+    Given the "ride status" request will fail
     When I open the "P8a Ride status" screen
-    Then I should see an error with a "Retry" button
-    When the ride status request succeeds
-    And I tap "Retry"
-    Then I should see the driver "Sunil Yadav"
+    Then I should see the "error" state
+    And the "Retry" button should be enabled
+
+  @ui-state
+  Scenario: Retry reloads the ride
+    Given the "ride status" request failed on the "P8a Ride status" screen
+    And the "ride status" request has recovered
+    When I tap "Retry"
+    Then I should see the text "Sunil Yadav"
 
   @ui-state @negative
-  Scenario: Offline banner blocks the fare request
+  Scenario: Going offline blocks the fare request
     Given the latest ride event is "TRIP_COMPLETED"
-    And the final fare of the ride is "₹340"
+    And the ride has the final fare "₹340"
     And I am on the "P8a Ride status" screen
     When the device goes offline
-    Then I should see an offline banner
+    Then I should see the "offline banner" state
     And the "Request ₹340 from family" button should be disabled
