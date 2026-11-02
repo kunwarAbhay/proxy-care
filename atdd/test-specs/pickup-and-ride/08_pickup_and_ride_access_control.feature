@@ -89,37 +89,48 @@ Feature: Role-based visibility and access rules during pickup and ride
     And the booking should be unchanged
 
     Examples: Unassigned caretaker
-      | actor        | endpoint               |
-      | Suresh Yadav | start location sharing |
-      | Suresh Yadav | verify pickup code     |
-      | Suresh Yadav | resend pickup code     |
-      | Suresh Yadav | book ride              |
-      | Suresh Yadav | record own transport   |
-      | Suresh Yadav | cancel ride            |
-      | Suresh Yadav | request ride fare      |
-      | Suresh Yadav | remind family          |
+      | actor        | endpoint             |
+      | Suresh Yadav | start trip to pickup |
+      | Suresh Yadav | verify pickup code   |
+      | Suresh Yadav | book ride            |
+      | Suresh Yadav | record own transport |
+      | Suresh Yadav | cancel ride          |
+      | Suresh Yadav | request ride fare    |
+      | Suresh Yadav | remind family        |
 
     Examples: Sponsoring user
-      | actor       | endpoint               |
-      | Rohan Mehta | start location sharing |
-      | Rohan Mehta | verify pickup code     |
-      | Rohan Mehta | resend pickup code     |
-      | Rohan Mehta | book ride              |
-      | Rohan Mehta | record own transport   |
-      | Rohan Mehta | cancel ride            |
-      | Rohan Mehta | request ride fare      |
-      | Rohan Mehta | remind family          |
+      | actor       | endpoint             |
+      | Rohan Mehta | start trip to pickup |
+      | Rohan Mehta | verify pickup code   |
+      | Rohan Mehta | book ride            |
+      | Rohan Mehta | record own transport |
+      | Rohan Mehta | cancel ride          |
+      | Rohan Mehta | request ride fare    |
+      | Rohan Mehta | remind family        |
 
     Examples: Unrelated user
-      | actor      | endpoint               |
-      | Priya Nair | start location sharing |
-      | Priya Nair | verify pickup code     |
-      | Priya Nair | resend pickup code     |
-      | Priya Nair | book ride              |
-      | Priya Nair | record own transport   |
-      | Priya Nair | cancel ride            |
-      | Priya Nair | request ride fare      |
-      | Priya Nair | remind family          |
+      | actor      | endpoint             |
+      | Priya Nair | start trip to pickup |
+      | Priya Nair | verify pickup code   |
+      | Priya Nair | book ride            |
+      | Priya Nair | record own transport |
+      | Priya Nair | cancel ride          |
+      | Priya Nair | request ride fare    |
+      | Priya Nair | remind family        |
+
+  @negative @api
+  Scenario Outline: Only customer support can lift a pickup code block
+    Given the pickup code attempts are blocked
+    When "<actor>" calls "lift pickup code block"
+    Then the server should respond with "403 Forbidden"
+    And the pickup code attempts should be blocked
+
+    Examples:
+      | actor        |
+      | Anita Verma  |
+      | Suresh Yadav |
+      | Rohan Mehta  |
+      | Priya Nair   |
 
   @negative @api
   Scenario Outline: Unauthenticated calls are rejected
@@ -130,7 +141,8 @@ Feature: Role-based visibility and access rules during pickup and ride
 
     Examples:
       | endpoint                |
-      | start location sharing  |
+      | start trip to pickup    |
+      | lift pickup code block  |
       | read caretaker location |
       | read pickup code        |
       | verify pickup code      |
@@ -229,8 +241,15 @@ Feature: Role-based visibility and access rules during pickup and ride
       | Priya Nair   | read visit timeline     |
 
   @negative @api
-  Scenario: No location is available before sharing starts
-    Given live location sharing is inactive
+  Scenario: No location is available before the trip starts
+    Given the booking is in state "ASSIGNED"
+    And live location sharing is inactive
+    When "Rohan Mehta" calls "read caretaker location"
+    Then the server should return no location
+
+  @negative @api
+  Scenario: No location is available after the visit is completed
+    Given the booking is in state "COMPLETED"
     When "Rohan Mehta" calls "read caretaker location"
     Then the server should return no location
 
@@ -346,13 +365,22 @@ Feature: Role-based visibility and access rules during pickup and ride
     And no "<request>" request should be sent before I verify
 
     Examples: Caretaker app
-      | state       | app       | actor       | screen               | action        | request            |
-      | ASSIGNED    | Caretaker | Anita Verma | P5 Confirm arrival   | Resend code   | resend pickup code |
-      | IN_PROGRESS | Caretaker | Anita Verma | P9a Ride payment     | Remind family | remind family      |
+      | state       | app       | actor       | screen           | action        | request       |
+      | IN_PROGRESS | Caretaker | Anita Verma | P9a Ride payment | Remind family | remind family |
 
     Examples: User app
       | state       | app  | actor       | screen                   | action             | request              |
       | IN_PROGRESS | User | Rohan Mehta | U2b Ride payment request | Approve & Pay ₹340 | create gateway order |
+
+  @negative
+  Scenario: An expired session asks for OTP before checking the pickup code
+    Given the booking is in state "ASSIGNED"
+    And I am logged in to the Caretaker app as "Anita Verma"
+    And I have entered "4821" in the "Pickup code" field
+    When my session expires
+    And I tap "Confirm arrival"
+    Then I should be asked to verify my mobile with OTP
+    And no "verify pickup code" request should be sent before I verify
 
   @ui-state
   Scenario: Verifying after session expiry returns to the same screen with the code kept

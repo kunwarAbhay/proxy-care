@@ -5,7 +5,6 @@
 # Open design questions (no scenario until decided):
 #   - "Cancel ride": confirmation, cancellation charge, next screen, and whether it is available after TRIP_STARTED.
 #   - What happens when the ride partner or driver cancels, or the driver never arrives? Ride events have no cancelled status.
-#   - What does a "Share trip" link contain? PRD 3.3 says the patient sees no location, so it must not reopen that visibility.
 #   - On resume, what control takes the caretaker from P8a to an existing request's P9a? Scenarios use "I open the existing fare request".
 
 @regression @caretaker-app @pickup-and-ride @P8a
@@ -37,11 +36,11 @@ Feature: Caretaker follows the ride to the hospital
     When I open the "P8a Ride status" screen
     Then I should see the text "Sunil Yadav"
     And I should see the text "DL 3C AB 1234"
+    And I should see the text "Cab"
     And I should see the text "7302"
     And I should see the text "₹320"
     And I should see the ride events "Ride Partner Assigned, Ride Partner Arrived, Trip Started, Trip Completed"
     And the "Call driver" button should be enabled
-    And the "Share trip" button should be enabled
     And the "Cancel ride" button should be visible
 
   @ui-state
@@ -108,6 +107,7 @@ Feature: Caretaker follows the ride to the hospital
     When I tap "Request ₹340 from family"
     Then the booking should have 1 "RIDE_TO_HOSPITAL" payment request for "₹340"
     And the ride payment request should be requested by "Anita Verma"
+    And the ride payment request should have the payee "ride partner"
     And the ride payment request should have status "REQUESTED"
     And I should be on the "P9a Ride payment" screen
     And the sponsoring user should get a ride payment request notification
@@ -186,12 +186,6 @@ Feature: Caretaker follows the ride to the hospital
     Given I am on the "P8a Ride status" screen
     When I tap "Call driver"
     Then the phone dialer should open with the number of "Sunil Yadav"
-
-  @happy-path @device
-  Scenario: Share trip opens the share sheet
-    Given I am on the "P8a Ride status" screen
-    When I tap "Share trip"
-    Then the device share sheet should open
 
   # ---------- Navigation and resume ----------
 

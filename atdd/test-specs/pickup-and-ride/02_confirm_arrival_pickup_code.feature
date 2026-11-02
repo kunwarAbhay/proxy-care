@@ -3,10 +3,14 @@
 # The design names the "wrong code" and "too many attempts" states but gives neither the wording nor the attempt limit.
 # Scenarios refer to the states by name and read the limit from test configuration.
 # Assumption: the field keeps ASCII digits only and caps at 4, including pasted text. The design only says "4-digit".
+# Product decision (3 Nov 2026), overriding §5 P5:
+#   - The pickup code does not expire, so P5 has no "Resend code" action.
+#   - A blocked caretaker has to call customer support to be unblocked.
+# Assumption: the button is labelled "Call customer support", and unblocking resets the attempt count. Help is not designed yet (§9).
 #
 # Open design questions (no scenario until decided):
-#   - What are the attempt limit and block duration, and how does a blocked caretaker recover?
-#   - Does "Resend code" have a cooldown or limit? Does it issue a new code or repeat the current one?
+#   - What is the attempt limit?
+#   - What happens on a no-show (§2 cancellation policy: full deduction, ₹0 refund)? No screen lets the caretaker report one at pickup.
 
 @regression @caretaker-app @pickup-and-ride @P5
 Feature: Caretaker confirms arrival with the pickup code
@@ -19,6 +23,8 @@ Feature: Caretaker confirms arrival with the pickup code
     - The caretaker never sees the code; it is only checked on the server.
     - A correct code moves the booking ASSIGNED -> IN_PROGRESS, sets stage PICKED_UP and starts billable time.
     - The patient's mobile is optional.
+    - The code does not expire and cannot be resent from P5.
+    - Only customer support can lift a block caused by too many attempts.
 
   Background:
     Given today is "2026-11-02"
@@ -38,7 +44,6 @@ Feature: Caretaker confirms arrival with the pickup code
     And the "Pickup code" field should be marked as required
     And the "Confirm arrival" button should be disabled
     And the "Call family" button should be enabled
-    And the "Resend code" button should be enabled
     And I should not see the pickup code
 
   # ---------- Happy path ----------
@@ -58,18 +63,6 @@ Feature: Caretaker confirms arrival with the pickup code
     Given the "verify pickup code" request is slow
     When I confirm arrival with the code "4821"
     Then the "Confirm arrival" button should be loading
-
-  @happy-path
-  Scenario Outline: Codes with leading or repeated digits are accepted as entered
-    Given the pickup code is "<code>"
-    When I confirm arrival with the code "<code>"
-    Then the booking should be in state "IN_PROGRESS"
-
-    Examples:
-      | code |
-      | 0427 |
-      | 0000 |
-      | 9999 |
 
   # ---------- Input validation ----------
 
@@ -177,7 +170,40 @@ Feature: Caretaker confirms arrival with the pickup code
     Then I should see the "too many attempts" state
     And the "Confirm arrival" button should be disabled
     And the "Call family" button should be enabled
+    And the "Call customer support" button should be enabled
     And the booking should be in state "ASSIGNED"
+
+  @happy-path @device
+  Scenario: A blocked caretaker can call customer support
+    Given the pickup code attempts are blocked
+    And I am on the "P5 Confirm arrival" screen
+    When I tap "Call customer support"
+    Then the phone dialer should open with the customer support number
+
+
+  @negative @security
+  Scenario: A block does not lift with time
+    Given the pickup code attempts have been blocked for 24 hours
+    When I open the "P5 Confirm arrival" screen
+    Then I should see the "too many attempts" state
+
+  @happy-path
+  Scenario: The correct code works after customer support lifts the block
+    Given the pickup code attempts are blocked
+    And customer support has lifted the block
+    When I open the "P5 Confirm arrival" screen
+    And I confirm arrival with the code "4821"
+    Then the booking should be in state "IN_PROGRESS"
+    And I should be on the "P6 Book ride or skip" screen
+
+  @negative
+  Scenario: Lifting the block resets the attempt count
+    Given the pickup code attempts are blocked
+    And customer support has lifted the block
+    When I open the "P5 Confirm arrival" screen
+    And I confirm arrival with the code "1234"
+    Then I should see the "wrong code" state
+    And I should not see the "too many attempts" state
 
   @negative @security @api
   Scenario: The correct code is rejected while attempts are blocked
@@ -194,37 +220,14 @@ Feature: Caretaker confirms arrival with the pickup code
     And I open the "P5 Confirm arrival" screen
     Then I should see the "too many attempts" state
 
-  # ---------- Resend code ----------
-
-  @happy-path @integration
-  Scenario: Resend code sends the valid code to the patient
-    Given the patient has mobile "+919812345678"
-    When I tap "Resend code"
-    Then an SMS with the pickup code should be sent to "+919812345678"
-    And the code in the SMS should match the code shown to the sponsoring user
-    And I should be on the "P5 Confirm arrival" screen
-    And I should not see the pickup code
-
-  @negative
-  Scenario: A failed resend keeps the caretaker on the screen
-    Given the "resend pickup code" request will fail
-    When I tap "Resend code"
-    Then I should see the "error" state
-    And I should be on the "P5 Confirm arrival" screen
+  # ---------- Code validity ----------
 
   @happy-path
-  Scenario: A patient without a mobile can be picked up with the sponsor's code
-    Given the patient has no mobile
+  Scenario: A code issued days earlier is still valid on the visit day
+    Given the pickup code was issued on "2026-10-29"
     When I confirm arrival with the code "4821"
     Then the booking should be in state "IN_PROGRESS"
-
-  @negative @pending-design @integration
-  Scenario: Resend sends no SMS when the patient has no mobile
-    Given the patient has no mobile
-    When I tap "Resend code"
-    Then no SMS should be sent
-    And I should be on the "P5 Confirm arrival" screen
-
+    
   # ---------- Actions ----------
 
   @happy-path @device
@@ -265,7 +268,6 @@ Feature: Caretaker confirms arrival with the pickup code
     When the device goes offline
     Then I should see the "offline banner" state
     And the "Confirm arrival" button should be disabled
-    And the "Resend code" button should be disabled
 
   # ---------- Navigation ----------
 

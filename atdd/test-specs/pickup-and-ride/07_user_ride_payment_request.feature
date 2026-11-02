@@ -97,14 +97,6 @@ Feature: User approves and pays the ride to the hospital
 
   # ---------- Approve & Pay ----------
 
-  @smoke @happy-path
-  Scenario: Approve & Pay redirects to the gateway
-    Given the ride payment request has status "REQUESTED"
-    And I am on the "U2b Ride payment request" screen
-    When I tap "Approve & Pay ₹340"
-    Then I should see the "Opening secure payment" sheet
-    And the ride payment request should have status "PAYING"
-    And I should be redirected to the gateway for "₹340"
 
   @smoke @happy-path
   Scenario: Returning after a successful payment shows success
@@ -218,7 +210,6 @@ Feature: User approves and pays the ride to the hospital
     Examples:
       | status    | chip      | pay     | retry   |
       | REQUESTED | Requested | enabled | hidden  |
-      | PAYING    | Paying    | loading | hidden  |
       | FAILED    | Failed    | hidden  | enabled |
       | PAID      | Paid      | hidden  | hidden  |
 

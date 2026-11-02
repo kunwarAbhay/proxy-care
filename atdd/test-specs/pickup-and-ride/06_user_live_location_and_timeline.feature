@@ -2,6 +2,7 @@
 # Source: proxy-care-ui-ux-state-for-api-design.md (PRD v2.3) §4 U1/U2, §2 location visibility + visit stage, §7 realtime; PRD 3.2, 3.3
 # U1's waiting state before the trip starts is also covered in service-booking/06_caretaker_assigned.feature.
 # Assumption: HEADING_TO_PICKUP highlights the "Pickup" step, as the trip to pickup has started. The design gives no mapping.
+# Product decision (3 Nov 2026), overriding §2 and PRD 3.3: location broadcasting starts when the trip to pickup starts, with no toggle.
 #
 # Open design questions (no scenario until decided):
 #   - Which U1 step applies to OWN_TRANSPORT_TO_HOSPITAL? "Ride" is the only transit step.
@@ -16,7 +17,7 @@ Feature: User follows the caretaker and the ride
   So that I know my family member has been picked up and is on the way
 
   Rules (context §2, §4, §7, PRD 3.3):
-    - The user sees the caretaker's live location once the caretaker turns on "Reaching pickup location".
+    - The user sees the caretaker's live location from the start of the trip to pickup until the visit is marked completed.
     - U1 progress has 5 steps: Assigned, Pickup, Ride, Hospital, Home.
     - U2 shows events only, with no fares or charges.
 
@@ -53,6 +54,13 @@ Feature: User follows the caretaker and the ride
       | B6 Caretaker assigned | Track visit live     |
 
   @ui-state
+  Scenario: The Assigned step is highlighted before the trip starts
+    Given the booking is in state "ASSIGNED"
+    And live location sharing is inactive
+    When I open the "U1 Caretaker live location" screen
+    Then the progress step "Assigned" should be highlighted
+
+  @ui-state
   Scenario Outline: The progress step follows the visit stage
     Given the booking is in state "<state>" with stage "<stage>"
     When I open the "U1 Caretaker live location" screen
@@ -75,19 +83,27 @@ Feature: User follows the caretaker and the ride
     And the ETA should update without a refresh
 
   @ui-state
-  Scenario: No caretaker pin is shown before sharing starts
-    Given the booking is in state "ASSIGNED" with stage "HEADING_TO_PICKUP"
+  Scenario: No caretaker pin is shown before the trip starts
+    Given the booking is in state "ASSIGNED"
     And live location sharing is inactive
     When I open the "U1 Caretaker live location" screen
     Then I should not see the caretaker pin
 
   @realtime
-  Scenario: The pin appears when the caretaker starts sharing
-    Given the booking is in state "ASSIGNED" with stage "HEADING_TO_PICKUP"
+  Scenario: The pin appears when the caretaker starts the trip
+    Given the booking is in state "ASSIGNED"
     And live location sharing is inactive
     And I am on the "U1 Caretaker live location" screen
-    When the caretaker turns on the "Reaching pickup location" toggle
+    When the caretaker starts the trip to pickup
     Then I should see the caretaker pin without a refresh
+
+  @realtime
+  Scenario: The pin stays when the caretaker goes offline for visit requests
+    Given the booking is in state "IN_PROGRESS" with stage "RIDE_TO_HOSPITAL"
+    And live location sharing is active
+    And I am on the "U1 Caretaker live location" screen
+    When the caretaker toggles offline on the "P1 Home" screen
+    Then I should see the caretaker pin
 
   @happy-path
   Scenario: Live location continues during the ride

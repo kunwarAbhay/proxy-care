@@ -305,7 +305,7 @@ API needs: create gateway order for a booking or payment request · handle gatew
 
 **P7b Own transport**: mode (Family car, Ambulance, Walking, Other). No fare. Actions: I've reached the hospital → H1; Book a ride instead.
 
-**P8a Ride status**: driver, plate, vehicle, ride PIN, 4 ride events with times, fare estimate. Actions: call driver, share trip, cancel ride. On `TRIP_COMPLETED`: **Request ₹X from family** → P9a.
+**P8a Ride status**: driver, plate, vehicle, ride PIN, 4 ride events with times, fare estimate. Actions: call driver, cancel ride. On `TRIP_COMPLETED`: **Request ₹X from family** → P9a.
 
 **P9a Ride payment**: fare, driver, "Payment request sent to {User}" → "{User} paid". Actions: Remind family; Continue (enabled once paid) → H1. Never pays with own money.
 

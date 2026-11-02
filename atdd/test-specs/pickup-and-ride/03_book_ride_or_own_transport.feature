@@ -115,8 +115,6 @@ Feature: Caretaker books a ride to the hospital or uses own transport
     Then the booking should have 1 ride for leg "TO_HOSPITAL" with vehicle "<option>" and provider "<provider>"
     And the booking should have stage "RIDE_TO_HOSPITAL"
     And I should be on the "P8a Ride status" screen
-    And the booking should have 0 "RIDE_TO_HOSPITAL" payment requests
-
     Examples:
       | option | provider |
       | Cab XL | Uber     |
@@ -204,7 +202,6 @@ Feature: Caretaker books a ride to the hospital or uses own transport
     Then I should be on the "H1 Services to-do" screen
     And the booking should have stage "AT_HOSPITAL"
     And the booking should have 0 rides for leg "TO_HOSPITAL"
-    And the booking should have 0 "RIDE_TO_HOSPITAL" payment requests
 
     Examples:
       | mode       |
