@@ -62,11 +62,10 @@ sealed class Result<T> {
   };
 
   /// Chains an operation that can itself fail; a [Failure] passes through.
-  Result<R> flatMap<R>(Result<R> Function(T value) transform) =>
-      switch (this) {
-        Success(:final value) => transform(value),
-        Failure(:final failure) => Failure(failure),
-      };
+  Result<R> flatMap<R>(Result<R> Function(T value) transform) => switch (this) {
+    Success(:final value) => transform(value),
+    Failure(:final failure) => Failure(failure),
+  };
 
   /// The value of a [Success]; throws the [AppFailure] of a [Failure].
   ///
@@ -87,8 +86,7 @@ final class Success<T> extends Result<T> {
   final T value;
 
   @override
-  bool operator ==(Object other) =>
-      other is Success<T> && other.value == value;
+  bool operator ==(Object other) => other is Success<T> && other.value == value;
 
   @override
   int get hashCode => Object.hash(Success, value);

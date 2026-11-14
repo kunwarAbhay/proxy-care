@@ -60,4 +60,3 @@ void runGuardedZone(
     current.report(error, stackTrace, context: 'zone');
   });
 }
-

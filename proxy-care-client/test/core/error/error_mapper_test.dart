@@ -233,13 +233,11 @@ void main() {
     });
 
     test('field errors cannot be modified', () {
-      final mapped =
-          mapper.map(
-                _response(422, {
-                  'errors': {'pan': 'Required'},
-                }),
-              )
-              as ValidationException;
+      final mapped = mapper.map(
+        _response(422, {
+          'errors': {'pan': 'Required'},
+        }),
+      ) as ValidationException;
 
       expect(() => mapped.fieldErrors['x'] = [], throwsUnsupportedError);
       expect(() => mapped.fieldErrors['pan']!.add('y'), throwsUnsupportedError);

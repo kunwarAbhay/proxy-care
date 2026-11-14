@@ -72,9 +72,8 @@ void main() {
     });
 
     test('flatMap chains operations and stops at the first failure', () {
-      Result<int> half(int v) => v.isEven
-          ? Success(v ~/ 2)
-          : const Failure(ValidationFailure('odd'));
+      Result<int> half(int v) =>
+          v.isEven ? Success(v ~/ 2) : const Failure(ValidationFailure('odd'));
 
       expect(const Success(8).flatMap(half).flatMap(half), const Success(2));
       expect(
