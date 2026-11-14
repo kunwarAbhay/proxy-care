@@ -133,7 +133,9 @@ final class RouteRegistry {
     final isCovered = covered || access != null;
     if (access case AuthenticatedAccess(:final feature?)
         when !Env.featureFlagPattern.hasMatch(feature)) {
-      problems.add('feature "$feature" must be snake_case, as in FEATURE_FLAGS');
+      problems.add(
+        'feature "$feature" must be snake_case, as in FEATURE_FLAGS',
+      );
     }
     switch (route) {
       case GoRoute(:final path, :final name):
