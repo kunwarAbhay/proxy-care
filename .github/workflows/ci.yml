@@ -1,0 +1,79 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "proxy-care-client/**"
+      - ".github/workflows/ci.yml"
+  pull_request:
+    paths:
+      - "proxy-care-client/**"
+      - ".github/workflows/ci.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  client:
+    name: Flutter client
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: proxy-care-client
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: 3.50.x
+          cache: true
+
+      - name: Show toolchain versions
+        run: |
+          flutter --version
+          dart --version
+
+      - name: Install dependencies
+        run: make get
+
+      - name: Check formatting
+        run: |
+          make format
+          git diff --exit-code -- .
+
+      - name: Generate code
+        run: make gen
+
+      - name: Analyze
+        run: make analyze
+
+      - name: Test
+        run: make test
+
+      - name: Reject a production config without an API URL
+        run: |
+          if dart run tool/check_env.dart config/production.example.json; then
+            echo "check_env accepted an empty production API_BASE_URL"
+            exit 1
+          fi
+
+      - name: Build web (release, development config)
+        run: make build-web
+
+      - name: Upload pubspec.lock
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pubspec-lock
+          path: proxy-care-client/pubspec.lock
+          if-no-files-found: ignore

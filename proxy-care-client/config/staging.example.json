@@ -1,0 +1,7 @@
+{
+  "APP_ENV": "staging",
+  "API_BASE_URL": "",
+  "APP_NAME": "Proxy Care (Staging)",
+  "ENABLE_LOGGING": "true",
+  "FEATURE_FLAGS": ""
+}
