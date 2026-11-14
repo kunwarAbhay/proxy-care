@@ -202,7 +202,7 @@ void main() {
       );
       expect(
         tester.getSemantics(find.text('Pending payment requests')),
-        containsSemantics(isHeader: true),
+        isSemantics(isHeader: true),
       );
       handle.dispose();
     });
@@ -257,7 +257,7 @@ void main() {
       );
       expect(
         tester.getSemantics(find.bySemanticsLabel('Paid')),
-        containsSemantics(isLiveRegion: true),
+        isSemantics(isLiveRegion: true),
       );
       handle.dispose();
     });
@@ -329,7 +329,7 @@ void main() {
       );
       expect(
         tester.getSemantics(find.byType(PcBanner)),
-        containsSemantics(isLiveRegion: true),
+        isSemantics(isLiveRegion: true),
       );
       handle.dispose();
     });
@@ -388,7 +388,7 @@ void main() {
       );
       expect(
         tester.getSemantics(find.text('Visit completed')),
-        containsSemantics(isHeader: true),
+        isSemantics(isHeader: true),
       );
       expect(tester.getSize(find.byType(PcIcon)), const Size.square(36));
       handle.dispose();

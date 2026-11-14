@@ -71,7 +71,10 @@ Widget _selectionSurface(
         onTap: onTap,
         customBorder: shape,
         overlayColor: pcStateLayer(context.pc.colors.text),
-        child: Padding(padding: padding.deflate(style.inset), child: child),
+        child: Padding(
+          padding: padding - EdgeInsets.all(style.inset),
+          child: child,
+        ),
       ),
     ),
   );
@@ -139,7 +142,7 @@ class PcSelectionCard extends StatelessWidget {
           horizontal: PcSpacing.space4,
         ),
         child: ConstrainedBox(
-          constraints: BoxConstraints(
+          constraints: const BoxConstraints(
             minHeight:
                 PcSizes.selectionCardMin -
                 2 * (PcSpacing.space3 + PcBorders.thin),

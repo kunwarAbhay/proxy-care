@@ -231,7 +231,7 @@ void main() {
       expect(tester.getSize(find.byType(PcTopAppBar)).height, 64);
       expect(
         tester.getSemantics(find.text('Book a caretaker')),
-        containsSemantics(isHeader: true),
+        isSemantics(isHeader: true),
       );
       final region = tester.widget<AnnotatedRegion<SystemUiOverlayStyle>>(
         find.byType(AnnotatedRegion<SystemUiOverlayStyle>).last,

@@ -124,7 +124,7 @@ void main() {
       expect(find.text('2 items left to tick'), findsOneWidget);
       expect(
         tester.getSemantics(find.bySemanticsLabel('Confirm')),
-        containsSemantics(
+        isSemantics(
           isButton: true,
           hasEnabledState: true,
           isEnabled: false,
@@ -180,7 +180,7 @@ void main() {
       expect(tester.getSize(find.byType(PcIcon)), const Size.square(24));
       expect(
         tester.getSemantics(find.bySemanticsLabel('Back')),
-        containsSemantics(isButton: true, hasTapAction: true),
+        isSemantics(isButton: true, hasTapAction: true),
       );
       await tester.tap(find.byType(IconButton));
       expect(taps, 1);

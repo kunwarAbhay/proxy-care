@@ -153,7 +153,7 @@ void main() {
       expect(tester.getSize(find.byType(PcChoiceChip)).height, 32);
       expect(
         tester.getSemantics(find.bySemanticsLabel('Morning')),
-        containsSemantics(
+        isSemantics(
           isButton: true,
           isSelected: true,
           isInMutuallyExclusiveGroup: true,
@@ -263,7 +263,7 @@ void main() {
       expect(shape.borderRadius, const BorderRadius.all(Radius.circular(16)));
       expect(
         tester.getSemantics(find.bySemanticsLabel('Kamla Devi, Mother · 72')),
-        containsSemantics(
+        isSemantics(
           isChecked: true,
           isInMutuallyExclusiveGroup: true,
           hasTapAction: true,
@@ -340,7 +340,7 @@ void main() {
       expect(find.byType(PcIcon), findsNWidgets(2));
       expect(
         tester.getSemantics(find.bySemanticsLabel('OPD visit')),
-        containsSemantics(isChecked: true),
+        isSemantics(isChecked: true),
       );
       handle.dispose();
     });
@@ -363,7 +363,7 @@ void main() {
       expect(tester.getSize(find.byType(PcSwitch)), const Size(52, 32));
       expect(
         tester.getSemantics(find.bySemanticsLabel('You are online')),
-        containsSemantics(hasToggledState: true, isToggled: false),
+        isSemantics(hasToggledState: true, isToggled: false),
       );
 
       await tester.tap(find.byType(PcSwitch));
@@ -373,7 +373,7 @@ void main() {
       expect(find.byType(PcIcon), findsOneWidget, reason: 'check in thumb');
       expect(
         tester.getSemantics(find.bySemanticsLabel('You are online')),
-        containsSemantics(isToggled: true),
+        isSemantics(isToggled: true),
       );
       handle.dispose();
     });
