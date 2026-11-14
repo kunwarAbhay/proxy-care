@@ -147,8 +147,7 @@ void main() {
           statusCode: 422,
           code: 'BUSINESS_RULE_VIOLATION',
         ): BusinessRuleFailure,
-        const ServerException(statusCode: 500, code: 'CONFLICT'):
-            ServerFailure,
+        const ServerException(statusCode: 500, code: 'CONFLICT'): ServerFailure,
         const ServerException(code: 'SERVICE_UNAVAILABLE'):
             ServiceUnavailableFailure,
         const ServerException.invalidResponse(statusCode: 409): ServerFailure,
