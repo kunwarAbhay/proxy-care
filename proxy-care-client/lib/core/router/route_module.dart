@@ -77,8 +77,9 @@ final class RouteRegistry {
       if (!RouteConventions.isModuleName(name)) {
         problems.add('module "$name" must be lowerCamelCase');
       }
-      if (!moduleNames.add(name))
+      if (!moduleNames.add(name)) {
         problems.add('module "$name" is listed twice');
+      }
 
       final moduleRoutes = module.buildRoutes(context);
       for (final route in moduleRoutes) {
@@ -145,8 +146,9 @@ final class RouteRegistry {
               !name.startsWith('$module.')) {
             problems.add('route name "$name" must be "$module.<screen>"');
           }
-          if (!names.add(name))
+          if (!names.add(name)) {
             problems.add('route name "$name" is used twice');
+          }
         }
         if (!isCovered) {
           problems.add('route "${name ?? path}" declares no RouteAccess');
