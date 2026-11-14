@@ -1,4 +1,5 @@
 import 'app_exception.dart';
+import 'backend_error_code.dart';
 import 'failure.dart';
 
 /// Converts infrastructure exceptions into application failures. Used by
@@ -34,19 +35,57 @@ extension AppExceptionToFailure on AppException {
         code: code,
         cause: cause,
       ),
-    ServerException(
-      :final message,
-      :final statusCode,
-      :final code,
-      :final cause,
-    ) =>
-      ServerFailure(message, statusCode: statusCode, code: code, cause: cause),
+    final ServerException server => _serverFailure(server),
     CancelledException(:final message, :final cause) => CancelledFailure(
       message,
       cause: cause,
     ),
     UnknownException(:final message, :final cause) => UnexpectedFailure(
       message,
+      cause: cause,
+    ),
+  };
+}
+
+/// Splits server-side exceptions into the failures screens distinguish.
+/// The HTTP status decides first; the backend code decides only what the
+/// status leaves open.
+AppFailure _serverFailure(ServerException exception) {
+  final ServerException(:message, :statusCode, :code, :cause) = exception;
+  if (exception.invalidResponse) {
+    return ServerFailure(message, statusCode: statusCode, cause: cause);
+  }
+  switch (statusCode) {
+    case 409:
+      return ConflictFailure(message, code: code, cause: cause);
+    case 429:
+      return RateLimitedFailure(message, code: code, cause: cause);
+    case 503:
+      return ServiceUnavailableFailure(message, code: code, cause: cause);
+  }
+  final isServerSide = statusCode != null && statusCode >= 500;
+  return switch (exception.errorCode) {
+    BackendErrorCode.businessRuleViolation when !isServerSide =>
+      BusinessRuleFailure(message, code: code, cause: cause),
+    BackendErrorCode.conflict when !isServerSide => ConflictFailure(
+      message,
+      code: code,
+      cause: cause,
+    ),
+    BackendErrorCode.rateLimited when !isServerSide => RateLimitedFailure(
+      message,
+      code: code,
+      cause: cause,
+    ),
+    BackendErrorCode.serviceUnavailable => ServiceUnavailableFailure(
+      message,
+      code: code,
+      cause: cause,
+    ),
+    _ => ServerFailure(
+      message,
+      statusCode: statusCode,
+      code: code,
       cause: cause,
     ),
   };

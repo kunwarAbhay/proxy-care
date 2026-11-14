@@ -8,7 +8,6 @@ import 'package:proxy_care_client/shared/widgets/pc_badge.dart';
 import 'package:proxy_care_client/shared/widgets/pc_banner.dart';
 import 'package:proxy_care_client/shared/widgets/pc_card.dart';
 import 'package:proxy_care_client/shared/widgets/pc_empty_state.dart';
-import 'package:proxy_care_client/shared/widgets/pc_icon.dart';
 import 'package:proxy_care_client/shared/widgets/pc_list_group.dart';
 import 'package:proxy_care_client/shared/widgets/pc_step_progress.dart';
 
@@ -156,7 +155,7 @@ void main() {
               title: 'OPD registration + consultation fee',
               meta: 'City Care Hospital · 10:18 AM',
               leading: const PcIconWell(
-                icon: PcIcon(PcGlyph.check),
+                icon: Icon(Icons.check),
                 tone: PcTone.warning,
               ),
               trailingAmount: '₹500',
@@ -172,7 +171,7 @@ void main() {
       expect(
         find.descendant(
           of: find.byType(PcListRow).first,
-          matching: find.byType(PcIcon),
+          matching: find.byType(Icon),
         ),
         findsNWidgets(2),
         reason: 'well icon and chevron',
@@ -184,7 +183,7 @@ void main() {
     testWidgets('pending icon well uses the warning tone', (tester) async {
       await pumpThemed(
         tester,
-        const PcIconWell(icon: PcIcon(PcGlyph.check), tone: PcTone.warning),
+        const PcIconWell(icon: Icon(Icons.check), tone: PcTone.warning),
       );
       final box = _boxOf(tester, find.byType(PcIconWell));
       expect(box.color, PcPalette.warning100);
@@ -316,7 +315,7 @@ void main() {
           title: "Couldn't verify this QR",
           body: 'No payment request was sent.',
           tone: PcTone.error,
-          icon: PcIcon(PcGlyph.close),
+          icon: Icon(Icons.close),
           live: true,
         ),
       );
@@ -377,7 +376,7 @@ void main() {
       await pumpThemed(
         tester,
         const PcResultState(
-          icon: PcIcon(PcGlyph.check),
+          icon: Icon(Icons.check),
           title: 'Visit completed',
           body: 'Kamla is home.',
         ),
@@ -390,7 +389,7 @@ void main() {
         tester.getSemantics(find.text('Visit completed')),
         isSemantics(isHeader: true),
       );
-      expect(tester.getSize(find.byType(PcIcon)), const Size.square(36));
+      expect(tester.getSize(find.byType(Icon)), const Size.square(36));
       handle.dispose();
     });
 

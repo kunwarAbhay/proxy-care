@@ -43,8 +43,8 @@ void main() {
       expect(scheme.surfaceTint.a, 0, reason: 'cards are flat');
     });
 
-    test('uses Roboto with the Devanagari fallback', () {
-      expect(theme.textTheme.bodyLarge?.fontFamily, PcFonts.family);
+    test('uses the platform typeface with the Devanagari fallback', () {
+      expect(PcTypeScale.bodyLg.fontFamily, isNull);
       expect(theme.textTheme.headlineMedium?.fontSize, PcTypeScale.h1.fontSize);
       expect(theme.textTheme.headlineMedium?.height, PcTypeScale.h1.height);
       expect(theme.textTheme.titleLarge?.fontSize, PcTypeScale.h3.fontSize);

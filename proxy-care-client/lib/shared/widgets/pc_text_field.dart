@@ -6,7 +6,6 @@ import '../../core/theme/tokens/pc_shape.dart';
 import '../../core/theme/tokens/pc_sizes.dart';
 import '../../core/theme/tokens/pc_spacing.dart';
 import '../../core/theme/tokens/pc_states.dart';
-import 'pc_icon.dart';
 
 /// The design system's outlined text field with a floating label cut into
 /// the border (TextField page), as a single-line input or a 3-row textarea.
@@ -145,8 +144,8 @@ class PcTextField extends StatelessWidget {
         errorStyle: pc.text.helper.copyWith(color: colors.errorTone.accent),
         errorMaxLines: 2,
         suffixIcon: hasError
-            ? PcIcon(
-                PcGlyph.alertCircle,
+            ? Icon(
+                Icons.error_outline,
                 size: PcSizes.iconMd,
                 color: colors.errorTone.accent,
               )

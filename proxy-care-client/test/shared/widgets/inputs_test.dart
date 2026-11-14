@@ -3,7 +3,6 @@ import 'package:material_ui/material_ui.dart';
 import 'package:proxy_care_client/core/theme/app_density.dart';
 import 'package:proxy_care_client/core/theme/tokens/pc_palette.dart';
 import 'package:proxy_care_client/shared/widgets/pc_chip.dart';
-import 'package:proxy_care_client/shared/widgets/pc_icon.dart';
 import 'package:proxy_care_client/shared/widgets/pc_otp_input.dart';
 import 'package:proxy_care_client/shared/widgets/pc_segmented_button.dart';
 import 'package:proxy_care_client/shared/widgets/pc_selection_card.dart';
@@ -68,7 +67,7 @@ void main() {
       expect(error.borderSide.color, PcPalette.error500);
       expect(find.text('Enter 10 digits, without 0 or +91'), findsOneWidget);
       expect(find.text('We send the OTP here'), findsNothing);
-      expect(find.byType(PcIcon), findsOneWidget);
+      expect(find.byType(Icon), findsOneWidget);
     });
 
     testWidgets('textarea shows three rows', (tester) async {
@@ -149,7 +148,7 @@ void main() {
         ),
       );
       expect(material.color, PcPalette.secondary100);
-      expect(find.byType(PcIcon), findsOneWidget);
+      expect(find.byType(Icon), findsOneWidget);
       expect(tester.getSize(find.byType(PcChoiceChip)).height, 32);
       expect(
         tester.getSemantics(find.bySemanticsLabel('Morning')),
@@ -176,7 +175,7 @@ void main() {
       final shape = material.shape! as RoundedRectangleBorder;
       expect(shape.side.color, PcPalette.neutral500);
       expect(shape.borderRadius, const BorderRadius.all(Radius.circular(8)));
-      expect(find.byType(PcIcon), findsNothing);
+      expect(find.byType(Icon), findsNothing);
     });
 
     testWidgets('time-slot chip is 36 tall; disabled chips are 38%', (
@@ -232,7 +231,7 @@ void main() {
       await tester.tap(find.text('हिन्दी'));
       await tester.pump();
       expect(selected, 'hi');
-      expect(find.byType(PcIcon), findsOneWidget);
+      expect(find.byType(Icon), findsOneWidget);
     });
   });
 
@@ -326,18 +325,18 @@ void main() {
         tester,
         StatefulBuilder(
           builder: (context, setState) => PcCheckboxTile(
-            icon: const PcIcon(PcGlyph.check),
+            icon: const Icon(Icons.check),
             title: 'OPD visit',
             selected: selected,
             onTap: () => setState(() => selected = !selected),
           ),
         ),
       );
-      expect(find.byType(PcIcon), findsOneWidget);
+      expect(find.byType(Icon), findsOneWidget);
       await tester.tap(find.byType(PcCheckboxTile));
       await tester.pump();
       expect(selected, isTrue);
-      expect(find.byType(PcIcon), findsNWidgets(2));
+      expect(find.byType(Icon), findsNWidgets(2));
       expect(
         tester.getSemantics(find.bySemanticsLabel('OPD visit')),
         isSemantics(isChecked: true),
@@ -370,7 +369,7 @@ void main() {
       await tester.pump();
 
       expect(value, isTrue);
-      expect(find.byType(PcIcon), findsOneWidget, reason: 'check in thumb');
+      expect(find.byType(Icon), findsOneWidget, reason: 'check in thumb');
       expect(
         tester.getSemantics(find.bySemanticsLabel('You are online')),
         isSemantics(isToggled: true),

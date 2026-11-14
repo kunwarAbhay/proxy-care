@@ -3,7 +3,6 @@ import 'package:material_ui/material_ui.dart';
 import 'package:proxy_care_client/core/theme/app_density.dart';
 import 'package:proxy_care_client/core/theme/tokens/pc_palette.dart';
 import 'package:proxy_care_client/shared/widgets/pc_button.dart';
-import 'package:proxy_care_client/shared/widgets/pc_icon.dart';
 import 'package:proxy_care_client/shared/widgets/pc_icon_button.dart';
 
 import '../../helpers/pump_themed.dart';
@@ -157,10 +156,10 @@ void main() {
         PcButton(
           label: 'Approve & pay ₹500',
           onPressed: () {},
-          icon: const PcIcon(PcGlyph.check),
+          icon: const Icon(Icons.check),
         ),
       );
-      expect(tester.getSize(find.byType(PcIcon)), const Size.square(20));
+      expect(tester.getSize(find.byType(Icon)), const Size.square(20));
     });
   });
 
@@ -171,13 +170,13 @@ void main() {
       await pumpThemed(
         tester,
         PcIconButton(
-          icon: const PcIcon(PcGlyph.arrowLeft),
+          icon: const Icon(Icons.arrow_back),
           semanticLabel: 'Back',
           onPressed: () => taps++,
         ),
       );
       expect(tester.getSize(find.byType(IconButton)), const Size.square(48));
-      expect(tester.getSize(find.byType(PcIcon)), const Size.square(24));
+      expect(tester.getSize(find.byType(Icon)), const Size.square(24));
       expect(
         tester.getSemantics(find.bySemanticsLabel('Back')),
         isSemantics(isButton: true, hasTapAction: true),
@@ -191,7 +190,7 @@ void main() {
       await pumpThemed(
         tester,
         PcIconButton(
-          icon: const PcIcon(PcGlyph.alertCircle),
+          icon: const Icon(Icons.error_outline),
           semanticLabel: 'About this purpose',
           onPressed: () {},
           variant: PcIconButtonVariant.info,
@@ -201,7 +200,7 @@ void main() {
       expect(button.style!.fixedSize!.resolve({}), const Size.square(44));
       // The padded tap target keeps 48px around the 44px button.
       expect(tester.getSize(find.byType(IconButton)), const Size.square(48));
-      expect(tester.getSize(find.byType(PcIcon)), const Size.square(20));
+      expect(tester.getSize(find.byType(Icon)), const Size.square(20));
     });
   });
 }

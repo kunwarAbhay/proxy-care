@@ -1,13 +1,16 @@
 import 'package:flutter/painting.dart';
 
-/// Font families from section 2 "Typography": Roboto for everything, with
-/// Noto Sans Devanagari as the fallback for Hindi.
+/// Font families. The design system names Roboto with Noto Sans
+/// Devanagari for Hindi; the MVP decision is to use the platform's native
+/// typeface for Latin text (no font family is set, so Android, iOS and the
+/// web engine use their default) and to bundle only Noto Sans Devanagari,
+/// which every style lists as its fallback.
 abstract final class PcFonts {
-  /// Primary family.
-  static const String family = 'Roboto';
+  /// The bundled Devanagari family (weights 400, 500, 700; see pubspec).
+  static const String devanagari = 'Noto Sans Devanagari';
 
-  /// Fallback stack after [family].
-  static const List<String> fallback = ['Noto Sans Devanagari'];
+  /// Fallback stack after the platform's default family.
+  static const List<String> fallback = [devanagari];
 }
 
 /// Every type token in the design system, with the exact size, line height,
@@ -21,7 +24,6 @@ abstract final class PcTypeScale {
 
   /// `display` 36 / 44, 500, -0.25.
   static const TextStyle display = TextStyle(
-    fontFamily: PcFonts.family,
     fontFamilyFallback: PcFonts.fallback,
     fontSize: 36,
     height: 44 / 36,
@@ -32,7 +34,6 @@ abstract final class PcTypeScale {
 
   /// `h1` 28 / 36, 400.
   static const TextStyle h1 = TextStyle(
-    fontFamily: PcFonts.family,
     fontFamilyFallback: PcFonts.fallback,
     fontSize: 28,
     height: 36 / 28,
@@ -43,7 +44,6 @@ abstract final class PcTypeScale {
 
   /// `h2` 24 / 32, 400.
   static const TextStyle h2 = TextStyle(
-    fontFamily: PcFonts.family,
     fontFamilyFallback: PcFonts.fallback,
     fontSize: 24,
     height: 32 / 24,
@@ -54,7 +54,6 @@ abstract final class PcTypeScale {
 
   /// `h3` 22 / 28, 400.
   static const TextStyle h3 = TextStyle(
-    fontFamily: PcFonts.family,
     fontFamilyFallback: PcFonts.fallback,
     fontSize: 22,
     height: 28 / 22,
@@ -65,7 +64,6 @@ abstract final class PcTypeScale {
 
   /// `title-md` 18 / 24, 500.
   static const TextStyle titleMd = TextStyle(
-    fontFamily: PcFonts.family,
     fontFamilyFallback: PcFonts.fallback,
     fontSize: 18,
     height: 24 / 18,
@@ -76,7 +74,6 @@ abstract final class PcTypeScale {
 
   /// `title-sm` 16 / 24, 500.
   static const TextStyle titleSm = TextStyle(
-    fontFamily: PcFonts.family,
     fontFamilyFallback: PcFonts.fallback,
     fontSize: 16,
     height: 24 / 16,
@@ -87,7 +84,6 @@ abstract final class PcTypeScale {
 
   /// `body-lg` 16 / 24, 400.
   static const TextStyle bodyLg = TextStyle(
-    fontFamily: PcFonts.family,
     fontFamilyFallback: PcFonts.fallback,
     fontSize: 16,
     height: 24 / 16,
@@ -98,7 +94,6 @@ abstract final class PcTypeScale {
 
   /// `body-md` 14 / 20, 400.
   static const TextStyle bodyMd = TextStyle(
-    fontFamily: PcFonts.family,
     fontFamilyFallback: PcFonts.fallback,
     fontSize: 14,
     height: 20 / 14,
@@ -109,7 +104,6 @@ abstract final class PcTypeScale {
 
   /// `body-sm` (caption) 12 / 16, 400, 0.4.
   static const TextStyle bodySm = TextStyle(
-    fontFamily: PcFonts.family,
     fontFamilyFallback: PcFonts.fallback,
     fontSize: 12,
     height: 16 / 12,
@@ -120,7 +114,6 @@ abstract final class PcTypeScale {
 
   /// `list-title` 15 / 20, 500.
   static const TextStyle listTitle = TextStyle(
-    fontFamily: PcFonts.family,
     fontFamilyFallback: PcFonts.fallback,
     fontSize: 15,
     height: 20 / 15,
@@ -131,7 +124,6 @@ abstract final class PcTypeScale {
 
   /// `list-meta` 13 / 18, 400.
   static const TextStyle listMeta = TextStyle(
-    fontFamily: PcFonts.family,
     fontFamilyFallback: PcFonts.fallback,
     fontSize: 13,
     height: 18 / 13,
@@ -142,7 +134,6 @@ abstract final class PcTypeScale {
 
   /// `button` 16 / 24, 500, 0.1.
   static const TextStyle button = TextStyle(
-    fontFamily: PcFonts.family,
     fontFamilyFallback: PcFonts.fallback,
     fontSize: 16,
     height: 24 / 16,
@@ -153,7 +144,6 @@ abstract final class PcTypeScale {
 
   /// `button-sm` 14 / 20, 500, 0.1.
   static const TextStyle buttonSm = TextStyle(
-    fontFamily: PcFonts.family,
     fontFamilyFallback: PcFonts.fallback,
     fontSize: 14,
     height: 20 / 14,
@@ -164,7 +154,6 @@ abstract final class PcTypeScale {
 
   /// `section-label` 14 / 20, 500, 0.1.
   static const TextStyle sectionLabel = TextStyle(
-    fontFamily: PcFonts.family,
     fontFamilyFallback: PcFonts.fallback,
     fontSize: 14,
     height: 20 / 14,
@@ -175,7 +164,6 @@ abstract final class PcTypeScale {
 
   /// `field-label` 12 / 16, 400.
   static const TextStyle fieldLabel = TextStyle(
-    fontFamily: PcFonts.family,
     fontFamilyFallback: PcFonts.fallback,
     fontSize: 12,
     height: 16 / 12,
@@ -186,7 +174,6 @@ abstract final class PcTypeScale {
 
   /// `overline` 12 / 16, 500, 0.5. Used uppercase.
   static const TextStyle overline = TextStyle(
-    fontFamily: PcFonts.family,
     fontFamilyFallback: PcFonts.fallback,
     fontSize: 12,
     height: 16 / 12,
@@ -197,7 +184,6 @@ abstract final class PcTypeScale {
 
   /// `badge` 13 / 16, 500.
   static const TextStyle badge = TextStyle(
-    fontFamily: PcFonts.family,
     fontFamilyFallback: PcFonts.fallback,
     fontSize: 13,
     height: 16 / 13,
@@ -208,7 +194,6 @@ abstract final class PcTypeScale {
 
   /// `nav-label` 12 / 16, 500 (700 when active).
   static const TextStyle navLabel = TextStyle(
-    fontFamily: PcFonts.family,
     fontFamilyFallback: PcFonts.fallback,
     fontSize: 12,
     height: 16 / 12,
@@ -219,7 +204,6 @@ abstract final class PcTypeScale {
 
   /// `micro` 11 / 14, 400. Visit-progress labels only.
   static const TextStyle micro = TextStyle(
-    fontFamily: PcFonts.family,
     fontFamilyFallback: PcFonts.fallback,
     fontSize: 11,
     height: 14 / 11,
@@ -230,7 +214,6 @@ abstract final class PcTypeScale {
 
   /// `amount-xl` 32 / 40, 500.
   static const TextStyle amountXl = TextStyle(
-    fontFamily: PcFonts.family,
     fontFamilyFallback: PcFonts.fallback,
     fontSize: 32,
     height: 40 / 32,
@@ -241,7 +224,6 @@ abstract final class PcTypeScale {
 
   /// `amount-lg` 26 / 32, 500.
   static const TextStyle amountLg = TextStyle(
-    fontFamily: PcFonts.family,
     fontFamilyFallback: PcFonts.fallback,
     fontSize: 26,
     height: 32 / 26,
@@ -252,7 +234,6 @@ abstract final class PcTypeScale {
 
   /// `amount-md` 22 / 28, 500.
   static const TextStyle amountMd = TextStyle(
-    fontFamily: PcFonts.family,
     fontFamilyFallback: PcFonts.fallback,
     fontSize: 22,
     height: 28 / 22,
@@ -263,7 +244,6 @@ abstract final class PcTypeScale {
 
   /// `otp-digit` 24 / 32, 500.
   static const TextStyle otpDigit = TextStyle(
-    fontFamily: PcFonts.family,
     fontFamilyFallback: PcFonts.fallback,
     fontSize: 24,
     height: 32 / 24,
@@ -274,7 +254,6 @@ abstract final class PcTypeScale {
 
   /// `code` 22 / 28, 500, 4.
   static const TextStyle code = TextStyle(
-    fontFamily: PcFonts.family,
     fontFamilyFallback: PcFonts.fallback,
     fontSize: 22,
     height: 28 / 22,
@@ -287,7 +266,6 @@ abstract final class PcTypeScale {
 
   /// `c-body-lg` 18 / 26, 400.
   static const TextStyle cBodyLg = TextStyle(
-    fontFamily: PcFonts.family,
     fontFamilyFallback: PcFonts.fallback,
     fontSize: 18,
     height: 26 / 18,
@@ -298,7 +276,6 @@ abstract final class PcTypeScale {
 
   /// `c-body-option` 17 / 24, 400.
   static const TextStyle cBodyOption = TextStyle(
-    fontFamily: PcFonts.family,
     fontFamilyFallback: PcFonts.fallback,
     fontSize: 17,
     height: 24 / 17,
@@ -309,7 +286,6 @@ abstract final class PcTypeScale {
 
   /// `c-body-md` 15 / 22, 400.
   static const TextStyle cBodyMd = TextStyle(
-    fontFamily: PcFonts.family,
     fontFamilyFallback: PcFonts.fallback,
     fontSize: 15,
     height: 22 / 15,
@@ -320,7 +296,6 @@ abstract final class PcTypeScale {
 
   /// `c-section-label` 16 / 24, 500.
   static const TextStyle cSectionLabel = TextStyle(
-    fontFamily: PcFonts.family,
     fontFamilyFallback: PcFonts.fallback,
     fontSize: 16,
     height: 24 / 16,
@@ -331,7 +306,6 @@ abstract final class PcTypeScale {
 
   /// `c-button` 18 / 24, 500, 0.1.
   static const TextStyle cButton = TextStyle(
-    fontFamily: PcFonts.family,
     fontFamilyFallback: PcFonts.fallback,
     fontSize: 18,
     height: 24 / 18,
@@ -342,7 +316,6 @@ abstract final class PcTypeScale {
 
   /// `c-field-label` 13 / 16, 400.
   static const TextStyle cFieldLabel = TextStyle(
-    fontFamily: PcFonts.family,
     fontFamilyFallback: PcFonts.fallback,
     fontSize: 13,
     height: 16 / 13,
@@ -353,7 +326,6 @@ abstract final class PcTypeScale {
 
   /// Comfortable helper text, 13 / 18, 400 ("helper 13/18").
   static const TextStyle cHelper = TextStyle(
-    fontFamily: PcFonts.family,
     fontFamilyFallback: PcFonts.fallback,
     fontSize: 13,
     height: 18 / 13,
@@ -364,7 +336,6 @@ abstract final class PcTypeScale {
 
   /// `c-nav-label` 13 / 16, 500.
   static const TextStyle cNavLabel = TextStyle(
-    fontFamily: PcFonts.family,
     fontFamilyFallback: PcFonts.fallback,
     fontSize: 13,
     height: 16 / 13,
@@ -376,7 +347,6 @@ abstract final class PcTypeScale {
   /// Comfortable status badge label: 15px, 500 (Badge page). The page gives
   /// no line height, so this keeps the `badge` token's 16px.
   static const TextStyle cBadge = TextStyle(
-    fontFamily: PcFonts.family,
     fontFamilyFallback: PcFonts.fallback,
     fontSize: 15,
     height: 16 / 15,
@@ -388,7 +358,6 @@ abstract final class PcTypeScale {
   /// Modal progress sheet title, 20 / 28, 500 (BottomSheet page). Not part
   /// of the named scale; see docs/design-system-mapping.md.
   static const TextStyle sheetTitle = TextStyle(
-    fontFamily: PcFonts.family,
     fontFamilyFallback: PcFonts.fallback,
     fontSize: 20,
     height: 28 / 20,

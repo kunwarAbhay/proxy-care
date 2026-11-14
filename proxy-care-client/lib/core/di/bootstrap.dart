@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../config/env.dart';
 import '../error/error_widget_builder.dart';
 import '../error/global_error_handlers.dart';
+import '../theme/font_licenses.dart';
 import 'app_container.dart';
 import 'core_providers.dart';
 
@@ -17,6 +18,7 @@ import 'core_providers.dart';
 /// 3. Create the Riverpod container, which wires the infrastructure.
 /// 4. Route uncaught framework and platform errors to the `ErrorReporter`,
 ///    and keep error details out of failed widgets outside debug builds.
+/// 5. Register the bundled fonts' licences.
 ///
 /// Run it inside `runGuardedZone` (see `main.dart`) so the binding and the
 /// app share the zone that catches asynchronous errors.
@@ -31,6 +33,7 @@ Future<ProviderContainer> bootstrap() async {
 
   installGlobalErrorHandlers(container.read(errorReporterProvider));
   installErrorWidgetBuilder();
+  registerFontLicenses();
 
   return container;
 }

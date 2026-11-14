@@ -44,7 +44,8 @@ final _rules = [
     name: 'types used by the domain layer are pure Dart',
     appliesTo: RegExp(
       r'^lib/(shared/models/|core/config/|'
-      r'core/error/(failure|error_reporter|app_exception)\.dart)',
+      r'core/error/(failure|error_reporter|app_exception|backend_error_code|'
+      r'user_error_kind|crash_reporter)\.dart)',
     ),
     forbidden: _frameworkImports,
   ),

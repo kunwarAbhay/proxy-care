@@ -4,54 +4,72 @@ import 'package:dio/dio.dart';
 import 'package:json_annotation/json_annotation.dart';
 
 import 'app_exception.dart';
+import 'backend_error_code.dart';
 
-/// The parts of a backend error body the app relies on.
+/// Reads a [BackendError] from an error response body. The default is
+/// [BackendError.parse]; an endpoint with a different error structure can
+/// supply its own parser to [ErrorMapper] or [ErrorMapper.fromResponse].
+typedef BackendErrorParser = BackendError Function(Object? body);
+
+/// The parts of a backend error response the app relies on.
 ///
-/// The backend answers errors with `application/problem+json` (RFC 9457).
-/// Its exact extensions are not specified yet, so parsing is tolerant:
+/// Every endpoint answers errors with the standard envelope:
 ///
-/// * message: `detail`, else `title`, else `message`;
-/// * code: `code`, else `errorCode`;
-/// * field errors: `errors` (a list of `{field | pointer | name, message |
-///   detail | reason}` or a map of field to message(s)), else
-///   `invalid-params` / `invalidParams` (the RFC's own example).
+/// ```json
+/// {
+///   "success": false,
+///   "data": null,
+///   "error": {
+///     "code": "VALIDATION_ERROR",
+///     "message": "Request validation failed",
+///     "fieldErrors": { "email": ["Invalid email address"] }
+///   },
+///   "meta": { "timestamp": "…", "correlationId": "abc-123" }
+/// }
+/// ```
 ///
-/// Independent of any feature DTO: it reads a raw JSON map.
+/// Independent of any feature DTO: it reads raw JSON.
 final class BackendError {
   /// Creates a parsed backend error.
-  const BackendError({this.message, this.code, this.fieldErrors = const {}});
+  const BackendError({
+    this.code,
+    this.message,
+    this.fieldErrors = const {},
+    this.correlationId,
+  });
 
-  /// Parses [body], which may be a decoded JSON map, a JSON string, or
-  /// anything else (ignored).
+  /// Parses the standard envelope from [body]: a decoded JSON map or a JSON
+  /// string. Anything else (an HTML error page, an empty body) yields an
+  /// empty [BackendError], and the HTTP status alone classifies the error.
   factory BackendError.parse(Object? body) {
     final json = _asMap(body);
-    if (json == null) return const BackendError();
+    final error = _asMap(json?['error']);
+    if (json == null || error == null) return const BackendError();
     return BackendError(
-      message:
-          _string(json['detail']) ??
-          _string(json['title']) ??
-          _string(json['message']),
-      code: _string(json['code']) ?? _string(json['errorCode']),
-      fieldErrors: _fieldErrors(
-        json['errors'] ?? json['invalid-params'] ?? json['invalidParams'],
-      ),
+      code: _string(error['code']),
+      message: _string(error['message']),
+      fieldErrors: _fieldErrors(error['fieldErrors']),
+      correlationId: _string(_asMap(json['meta'])?['correlationId']),
     );
   }
 
-  /// Human-readable description from the backend (for logs).
-  final String? message;
-
-  /// Machine-readable error code.
+  /// `error.code`: stable machine-readable identifier.
   final String? code;
 
-  /// Messages per field.
+  /// `error.message`: technical message, for logs only.
+  final String? message;
+
+  /// `error.fieldErrors`: messages per field.
   final Map<String, List<String>> fieldErrors;
 
-  static Map<String, Object?>? _asMap(Object? body) {
-    if (body is Map<Object?, Object?>) return body.cast<String, Object?>();
-    if (body is String && body.trim().startsWith('{')) {
+  /// `meta.correlationId`.
+  final String? correlationId;
+
+  static Map<String, Object?>? _asMap(Object? value) {
+    if (value is Map<Object?, Object?>) return value.cast<String, Object?>();
+    if (value is String && value.trim().startsWith('{')) {
       try {
-        final decoded = jsonDecode(body);
+        final decoded = jsonDecode(value);
         if (decoded is Map<Object?, Object?>) {
           return decoded.cast<String, Object?>();
         }
@@ -65,55 +83,33 @@ final class BackendError {
   static String? _string(Object? value) =>
       value is String && value.isNotEmpty ? value : null;
 
-  static Map<String, List<String>> _fieldErrors(Object? errors) {
-    final result = <String, List<String>>{};
-    void add(String? field, Object? message) {
-      if (field == null) return;
-      final messages = switch (message) {
-        final String text => [text],
-        final List<Object?> list => list.whereType<String>().toList(),
-        _ => const <String>[],
-      };
-      (result[field] ??= []).addAll(messages);
-    }
-
-    if (errors is Map<Object?, Object?>) {
-      for (final MapEntry(:key, :value) in errors.entries) {
-        add(key is String ? key : null, value);
-      }
-    } else if (errors is List) {
-      for (final item in errors.whereType<Map<Object?, Object?>>()) {
-        final field =
-            _string(item['field']) ??
-            _pointerField(_string(item['pointer'])) ??
-            _string(item['name']);
-        add(
-          field,
-          _string(item['message']) ??
-              _string(item['detail']) ??
-              _string(item['reason']),
-        );
-      }
-    }
-    return result;
-  }
-
-  /// `#/patient/name` or `/patient/name` → `patient.name`.
-  static String? _pointerField(String? pointer) {
-    if (pointer == null) return null;
-    final path = pointer.replaceFirst(RegExp('^#?/'), '').replaceAll('/', '.');
-    return path.isEmpty ? null : path;
+  static Map<String, List<String>> _fieldErrors(Object? value) {
+    if (value is! Map<Object?, Object?>) return const {};
+    return {
+      for (final MapEntry(:key, :value) in value.entries)
+        if (key is String)
+          key: switch (value) {
+            final String message => [message],
+            final List<Object?> messages =>
+              messages.whereType<String>().toList(),
+            _ => const <String>[],
+          },
+    };
   }
 }
 
 /// Translates any error raised by infrastructure into an [AppException].
 ///
 /// The single place that knows about Dio's exceptions, HTTP status codes,
-/// the backend error body and serialization errors. Data sources and
+/// the backend error envelope and serialization errors. Data sources and
 /// `guardResult` call it; nothing above the data layer sees a Dio type.
 final class ErrorMapper {
-  /// Creates the mapper.
-  const ErrorMapper();
+  /// Creates the mapper. [parser] reads error bodies; the default reads the
+  /// standard envelope.
+  const ErrorMapper({this.parser = BackendError.parse});
+
+  /// Reads error response bodies.
+  final BackendErrorParser parser;
 
   /// Maps [error] to an [AppException]. Existing [AppException]s are
   /// returned unchanged; unclassifiable errors become [UnknownException].
@@ -130,59 +126,76 @@ final class ErrorMapper {
 
   /// Maps an HTTP error response by its [statusCode] and [body].
   ///
-  /// A 4xx response that carries field errors is a [ValidationException]
-  /// whatever its status, so backend validation errors always reach forms.
-  AppException fromResponse(int? statusCode, Object? body, {Object? cause}) {
-    final backend = BackendError.parse(body);
+  /// The status decides the exception type. The backend code only refines
+  /// what the status leaves open: a 400 / 422 is a [ValidationException]
+  /// unless its code says it is a business-rule violation, and any 4xx that
+  /// carries field errors is a [ValidationException], so backend validation
+  /// errors always reach forms. [parser] overrides the mapper's parser for
+  /// one endpoint.
+  AppException fromResponse(
+    int? statusCode,
+    Object? body, {
+    Object? cause,
+    BackendErrorParser? parser,
+  }) {
+    final backend = (parser ?? this.parser)(body);
     final message = backend.message;
     final code = backend.code;
+    final correlationId = backend.correlationId;
     final isClientError =
         statusCode != null && statusCode >= 400 && statusCode < 500;
+    final isBusinessRule =
+        BackendErrorCode.fromWire(code) ==
+        BackendErrorCode.businessRuleViolation;
 
-    if (isClientError && backend.fieldErrors.isNotEmpty) {
-      return ValidationException(
-        message: message ?? 'The request was invalid.',
-        fieldErrors: backend.fieldErrors,
-        statusCode: statusCode,
-        code: code,
-        cause: cause,
-      );
-    }
+    ValidationException validation() => ValidationException(
+      message: message ?? 'The request was invalid.',
+      fieldErrors: backend.fieldErrors,
+      statusCode: statusCode,
+      code: code,
+      correlationId: correlationId,
+      cause: cause,
+    );
+
+    ServerException server() => ServerException(
+      message: message ?? 'The server failed to handle the request.',
+      statusCode: statusCode,
+      code: code,
+      correlationId: correlationId,
+      cause: cause,
+    );
+
+    if (isClientError && backend.fieldErrors.isNotEmpty) return validation();
 
     return switch (statusCode) {
-      400 || 422 => ValidationException(
-        message: message ?? 'The request was invalid.',
-        statusCode: statusCode,
-        code: code,
-        cause: cause,
-      ),
+      400 || 422 => isBusinessRule ? server() : validation(),
       401 => UnauthorizedException(
         message: message ?? 'Authentication is required.',
         code: code,
+        correlationId: correlationId,
         cause: cause,
       ),
       403 => ForbiddenException(
         message: message ?? 'The action is not allowed.',
         code: code,
+        correlationId: correlationId,
         cause: cause,
       ),
       404 || 410 => NotFoundException(
         message: message ?? 'The resource was not found.',
         statusCode: statusCode!,
         code: code,
+        correlationId: correlationId,
         cause: cause,
       ),
       408 || 504 => TimeoutException(
         message: message ?? 'The request timed out.',
         statusCode: statusCode,
-        cause: cause,
-      ),
-      _ => ServerException(
-        message: message ?? 'The server failed to handle the request.',
-        statusCode: statusCode,
         code: code,
+        correlationId: correlationId,
         cause: cause,
       ),
+      _ => server(),
     };
   }
 

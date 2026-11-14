@@ -17,7 +17,22 @@ void main() {
     });
 
     test('fromEnvironment reads development defaults without defines', () {
+      expect(Env.isReleaseBuild, isFalse, reason: 'tests are debug builds');
       expect(Env.fromEnvironment(), parse());
+    });
+
+    test('release builds never fall back to development', () {
+      expect(
+        () => parse(requireExplicitEnvironment: true),
+        throwsEnvError('APP_ENV is required in release builds'),
+      );
+      expect(
+        parse(
+          appEnv: 'development',
+          requireExplicitEnvironment: true,
+        ).environment,
+        AppEnvironment.development,
+      );
     });
 
     test('turns logging off by default in production', () {
@@ -239,6 +254,7 @@ Env parse({
   String appName = '',
   String enableLogging = '',
   String featureFlags = '',
+  bool requireExplicitEnvironment = false,
 }) {
   return Env.parse(
     appEnv: appEnv,
@@ -246,6 +262,7 @@ Env parse({
     appName: appName,
     enableLogging: enableLogging,
     featureFlags: featureFlags,
+    requireExplicitEnvironment: requireExplicitEnvironment,
   );
 }
 

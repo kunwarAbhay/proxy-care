@@ -6,7 +6,7 @@ import 'package:proxy_care_client/core/config/env_exception.dart';
 
 /// Validates a `--dart-define-from-file` JSON file against the [Env] rules.
 ///
-/// Usage: `dart run tool/check_env.dart config/production.json`
+/// Usage: `dart run tool/check_env.dart config/env/production.json`
 ///
 /// Exits with a non-zero code when the file is missing or invalid, so a build
 /// can stop before producing an artifact with the wrong configuration.
@@ -40,6 +40,8 @@ void main(List<String> arguments) {
       appName: read(Env.appNameKey),
       enableLogging: read(Env.enableLoggingKey),
       featureFlags: read(Env.featureFlagsKey),
+      // Files are used for real builds, so they must name the environment.
+      requireExplicitEnvironment: true,
     );
     stdout.writeln('${file.path} is valid: $env');
   } on EnvConfigException catch (error) {

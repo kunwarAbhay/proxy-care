@@ -11,7 +11,6 @@ export 'pc_chip.dart';
 export 'pc_dialog.dart';
 export 'pc_empty_state.dart';
 export 'pc_focus_ring.dart';
-export 'pc_icon.dart';
 export 'pc_icon_button.dart';
 export 'pc_layout.dart';
 export 'pc_list_group.dart';

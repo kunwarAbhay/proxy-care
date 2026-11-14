@@ -1,12 +1,12 @@
 import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
 
+import '../../core/l10n/generated/app_localizations.dart';
 import '../../core/theme/pc_theme.dart';
 import '../../core/theme/system_ui.dart';
 import '../../core/theme/tokens/pc_sizes.dart';
 import '../../core/theme/tokens/pc_spacing.dart';
 import '../../core/theme/tokens/pc_typography.dart';
-import 'pc_icon.dart';
 import 'pc_icon_button.dart';
 
 /// The leading control of a [PcTopAppBar] (usage rules, "Navigation").
@@ -33,8 +33,8 @@ class PcTopAppBar extends StatelessWidget implements PreferredSizeWidget {
     this.leading = PcAppBarLeading.back,
     this.onLeadingPressed,
     this.trailing,
-    this.backLabel = 'Back',
-    this.closeLabel = 'Close',
+    this.backLabel,
+    this.closeLabel,
   });
 
   /// Screen title.
@@ -49,11 +49,13 @@ class PcTopAppBar extends StatelessWidget implements PreferredSizeWidget {
   /// Up to one trailing icon button or status pill.
   final Widget? trailing;
 
-  /// Screen-reader label of the back button.
-  final String backLabel;
+  /// Screen-reader label of the back button. Defaults to the localized
+  /// "Back".
+  final String? backLabel;
 
-  /// Screen-reader label of the close button.
-  final String closeLabel;
+  /// Screen-reader label of the close button. Defaults to the localized
+  /// "Close".
+  final String? closeLabel;
 
   @override
   Size get preferredSize => const Size.fromHeight(PcSizes.appBar);
@@ -61,6 +63,7 @@ class PcTopAppBar extends StatelessWidget implements PreferredSizeWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.pc.colors;
+    final l10n = AppLocalizations.of(context);
     final onPressed =
         onLeadingPressed ?? () => Navigator.of(context).maybePop();
 
@@ -80,14 +83,14 @@ class PcTopAppBar extends StatelessWidget implements PreferredSizeWidget {
                 children: [
                   if (leading != PcAppBarLeading.none) ...[
                     PcIconButton(
-                      icon: PcIcon(
+                      icon: Icon(
                         leading == PcAppBarLeading.back
-                            ? PcGlyph.arrowLeft
-                            : PcGlyph.close,
+                            ? Icons.arrow_back
+                            : Icons.close,
                       ),
                       semanticLabel: leading == PcAppBarLeading.back
-                          ? backLabel
-                          : closeLabel,
+                          ? backLabel ?? l10n.a11yBack
+                          : closeLabel ?? l10n.a11yClose,
                       onPressed: onPressed,
                     ),
                     const SizedBox(width: PcSpacing.space1),

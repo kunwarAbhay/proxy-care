@@ -1,6 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 
 import 'app_density.dart';
+import 'tokens/pc_breakpoints.dart';
 import 'tokens/pc_colors.dart';
 import 'tokens/pc_typography.dart';
 
@@ -17,6 +18,7 @@ final class PcTheme extends ThemeExtension<PcTheme> {
     required this.colors,
     required this.text,
     required this.metrics,
+    this.layout = PcBreakpoints.provisional,
   });
 
   /// The light theme at [density].
@@ -39,6 +41,9 @@ final class PcTheme extends ThemeExtension<PcTheme> {
   /// Density-dependent sizes.
   final PcDensityMetrics metrics;
 
+  /// Breakpoints and maximum content width (provisional).
+  final PcBreakpoints layout;
+
   /// Whether this is the caretaker density.
   bool get isComfortable => density == AppDensity.comfortable;
 
@@ -48,12 +53,14 @@ final class PcTheme extends ThemeExtension<PcTheme> {
     PcColors? colors,
     PcTextStyles? text,
     PcDensityMetrics? metrics,
+    PcBreakpoints? layout,
   }) {
     return PcTheme(
       density: density ?? this.density,
       colors: colors ?? this.colors,
       text: text ?? this.text,
       metrics: metrics ?? this.metrics,
+      layout: layout ?? this.layout,
     );
   }
 
@@ -71,4 +78,8 @@ extension PcThemeContext on BuildContext {
   /// the app theme was not built with `buildProxyCareTheme`.
   PcTheme get pc =>
       Theme.of(this).extension<PcTheme>() ?? PcTheme.light(AppDensity.standard);
+
+  /// The window size class of the current window.
+  PcWindowClass get pcWindowClass =>
+      pc.layout.classify(MediaQuery.sizeOf(this).width);
 }

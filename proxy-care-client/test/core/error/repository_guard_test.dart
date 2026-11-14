@@ -51,9 +51,15 @@ void main() {
             requestOptions: _options,
             statusCode: 422,
             data: {
-              'errors': [
-                {'field': 'mobile', 'message': 'Enter 10 digits'},
-              ],
+              'success': false,
+              'data': null,
+              'error': {
+                'code': 'VALIDATION_ERROR',
+                'message': 'Request validation failed',
+                'fieldErrors': {
+                  'mobile': ['Enter 10 digits'],
+                },
+              },
             },
           ),
         ),
@@ -133,6 +139,19 @@ void main() {
         const NotFoundException(): NotFoundFailure,
         ValidationException(): ValidationFailure,
         const ServerException(): ServerFailure,
+        const ServerException(statusCode: 409): ConflictFailure,
+        const ServerException(statusCode: 429): RateLimitedFailure,
+        const ServerException(statusCode: 503): ServiceUnavailableFailure,
+        const ServerException(statusCode: 500): ServerFailure,
+        const ServerException(
+          statusCode: 422,
+          code: 'BUSINESS_RULE_VIOLATION',
+        ): BusinessRuleFailure,
+        const ServerException(statusCode: 500, code: 'CONFLICT'):
+            ServerFailure,
+        const ServerException(code: 'SERVICE_UNAVAILABLE'):
+            ServiceUnavailableFailure,
+        const ServerException.invalidResponse(statusCode: 409): ServerFailure,
         const CancelledException(): CancelledFailure,
         const UnknownException(): UnexpectedFailure,
       };

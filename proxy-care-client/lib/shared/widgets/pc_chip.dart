@@ -7,7 +7,6 @@ import '../../core/theme/tokens/pc_spacing.dart';
 import '../../core/theme/tokens/pc_states.dart';
 import '../../core/theme/tokens/pc_typography.dart';
 import 'pc_focus_ring.dart';
-import 'pc_icon.dart';
 import 'pc_state_layer.dart';
 
 /// Chip types from the Chip page.
@@ -107,8 +106,8 @@ class PcChoiceChip extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     if (selected) ...[
-                      PcIcon(
-                        PcGlyph.check,
+                      Icon(
+                        Icons.check,
                         size: PcSizes.iconSm,
                         color: labelColor,
                       ),

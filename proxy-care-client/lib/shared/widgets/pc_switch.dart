@@ -5,7 +5,6 @@ import '../../core/theme/tokens/pc_shape.dart';
 import '../../core/theme/tokens/pc_sizes.dart';
 import '../../core/theme/tokens/pc_states.dart';
 import 'pc_focus_ring.dart';
-import 'pc_icon.dart';
 
 /// The design system's 52×32 on/off switch (Switch page, decision #9).
 ///
@@ -64,8 +63,8 @@ class PcSwitch extends StatelessWidget {
           shape: BoxShape.circle,
         ),
         child: value
-            ? PcIcon(
-                PcGlyph.check,
+            ? Icon(
+                Icons.check,
                 size: PcSizes.switchCheck,
                 color: colors.primary,
               )

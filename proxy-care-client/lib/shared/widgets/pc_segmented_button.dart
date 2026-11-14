@@ -5,7 +5,6 @@ import '../../core/theme/tokens/pc_shape.dart';
 import '../../core/theme/tokens/pc_sizes.dart';
 import '../../core/theme/tokens/pc_spacing.dart';
 import '../../core/theme/tokens/pc_typography.dart';
-import 'pc_icon.dart';
 import 'pc_state_layer.dart';
 
 /// One option of a [PcSegmentedButton].
@@ -89,8 +88,8 @@ class PcSegmentedButton<T> extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 if (isSelected) ...[
-                  PcIcon(
-                    PcGlyph.check,
+                  Icon(
+                    Icons.check,
                     size: PcSizes.iconSm,
                     color: labelColor,
                   ),

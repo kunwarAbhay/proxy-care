@@ -6,7 +6,6 @@ import '../../core/theme/tokens/pc_sizes.dart';
 import '../../core/theme/tokens/pc_spacing.dart';
 import '../../core/theme/tokens/pc_typography.dart';
 import 'pc_focus_ring.dart';
-import 'pc_icon.dart';
 import 'pc_state_layer.dart';
 
 /// Card variants from the Card page. Cards are flat: a border, never a
@@ -201,8 +200,8 @@ class PcRoleCard extends StatelessWidget {
                 ],
               ),
             ),
-            PcIcon(
-              PcGlyph.chevronRight,
+            Icon(
+              Icons.chevron_right,
               size: PcSizes.iconMd,
               color: titleColor,
             ),
@@ -269,8 +268,8 @@ class _PcExpandableCardState extends State<PcExpandableCard> {
                     ],
                     RotatedBox(
                       quarterTurns: _expanded ? 2 : 0,
-                      child: PcIcon(
-                        PcGlyph.chevronDown,
+                      child: Icon(
+                        Icons.expand_more,
                         size: PcSizes.iconMd,
                         color: colors.textMuted,
                       ),

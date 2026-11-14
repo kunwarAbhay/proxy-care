@@ -2,12 +2,33 @@ import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:json_annotation/json_annotation.dart';
 import 'package:proxy_care_client/core/error/app_exception.dart';
+import 'package:proxy_care_client/core/error/backend_error_code.dart';
 import 'package:proxy_care_client/core/error/error_mapper.dart';
 
 final _options = RequestOptions(path: '/v1/bookings');
 
 DioException _dio(DioExceptionType type, {Object? error}) =>
     DioException(requestOptions: _options, type: type, error: error);
+
+/// The standard backend error envelope.
+Map<String, Object?> _envelope({
+  String? code,
+  String? message,
+  Map<String, Object?>? fieldErrors,
+  String? correlationId,
+}) => {
+  'success': false,
+  'data': null,
+  'error': {
+    'code': ?code,
+    'message': ?message,
+    'fieldErrors': ?fieldErrors,
+  },
+  'meta': {
+    'timestamp': '2026-11-14T10:00:00Z',
+    'correlationId': ?correlationId,
+  },
+};
 
 DioException _response(int status, [Object? data]) => DioException(
   requestOptions: _options,
@@ -98,116 +119,150 @@ void main() {
     });
   });
 
-  group('backend error body (problem+json)', () {
-    test('carries the backend code and detail', () {
+  group('backend error envelope', () {
+    test('reads code, message and correlation id', () {
       final mapped = mapper.map(
-        _response(409, {
-          'type': 'https://api.proxycare.in/problems/booking-state',
-          'title': 'Conflict',
-          'status': 409,
-          'detail': 'The booking is no longer WAITING.',
-          'code': 'BOOKING_NOT_CANCELLABLE',
-        }),
+        _response(
+          409,
+          _envelope(
+            code: 'CONFLICT',
+            message: 'Booking version mismatch',
+            correlationId: 'abc-123',
+          ),
+        ),
       );
 
       expect(mapped, isA<ServerException>());
-      expect(mapped.code, 'BOOKING_NOT_CANCELLABLE');
-      expect(mapped.message, 'The booking is no longer WAITING.');
-    });
-
-    test('falls back to the title and accepts errorCode', () {
-      final mapped = mapper.map(
-        _response(401, {
-          'title': 'Token expired',
-          'errorCode': 'TOKEN_EXPIRED',
-        }),
-      );
-
-      expect(mapped, isA<UnauthorizedException>());
-      expect(mapped.code, 'TOKEN_EXPIRED');
-      expect(mapped.message, 'Token expired');
+      expect(mapped.code, 'CONFLICT');
+      expect(mapped.errorCode, BackendErrorCode.conflict);
+      expect(mapped.message, 'Booking version mismatch');
+      expect(mapped.correlationId, 'abc-123');
     });
 
     test('reads a JSON string body', () {
       final mapped = mapper.map(
-        _response(403, '{"detail":"Not your booking","code":"NOT_OWNER"}'),
+        _response(
+          403,
+          '{"success":false,"data":null,'
+              '"error":{"code":"FORBIDDEN","message":"Not your booking"}}',
+        ),
       );
 
       expect(mapped, isA<ForbiddenException>());
-      expect(mapped.code, 'NOT_OWNER');
+      expect(mapped.errorCode, BackendErrorCode.forbidden);
     });
 
-    test('ignores a body that is not a problem document', () {
-      final mapped = mapper.map(_response(500, '<html>Bad gateway</html>'));
+    test('keeps an unknown code as sent', () {
+      final mapped = mapper.map(
+        _response(409, _envelope(code: 'SLOT_TAKEN')),
+      );
+
+      expect(mapped.code, 'SLOT_TAKEN');
+      expect(mapped.errorCode, isNull);
+    });
+
+    test('ignores a body that is not the envelope', () {
+      for (final body in <Object?>[
+        '<html>Bad gateway</html>',
+        {'detail': 'problem+json is not the contract'},
+        null,
+      ]) {
+        final mapped = mapper.map(_response(502, body));
+
+        expect(mapped, isA<ServerException>());
+        expect(mapped.code, isNull);
+        expect(mapped.message, 'The server failed to handle the request.');
+      }
+    });
+
+    test('the HTTP status stays authoritative over the code', () {
+      final mapped = mapper.map(
+        _response(401, _envelope(code: 'VALIDATION_ERROR')),
+      );
+
+      expect(mapped, isA<UnauthorizedException>());
+    });
+
+    test('a 422 business-rule violation is not a validation error', () {
+      final mapped = mapper.map(
+        _response(422, _envelope(code: 'BUSINESS_RULE_VIOLATION')),
+      );
 
       expect(mapped, isA<ServerException>());
-      expect(mapped.message, 'The server failed to handle the request.');
-      expect(mapped.code, isNull);
+      expect(mapped.errorCode, BackendErrorCode.businessRuleViolation);
+    });
+
+    test('an endpoint can supply its own parser', () {
+      final custom = ErrorMapper(
+        parser: (body) => BackendError(
+          code: (body! as Map<String, Object?>)['reason'] as String?,
+        ),
+      );
+
+      final mapped = custom.map(_response(409, {'reason': 'CONFLICT'}));
+      expect(mapped.errorCode, BackendErrorCode.conflict);
+
+      final perCall = mapper.fromResponse(
+        404,
+        {'legacyCode': 'GONE'},
+        parser: (body) => const BackendError(code: 'NOT_FOUND'),
+      );
+      expect(perCall.errorCode, BackendErrorCode.notFound);
     });
   });
 
   group('validation errors', () {
-    test('a list of field errors', () {
+    test('field errors from the envelope', () {
       final mapped = mapper.map(
-        _response(422, {
-          'title': 'Validation failed',
-          'code': 'VALIDATION_FAILED',
-          'errors': [
-            {'field': 'mobile', 'message': 'Enter 10 digits'},
-            {'field': 'mobile', 'message': 'Without 0 or +91'},
-            {'pointer': '#/patient/age', 'detail': 'Must be at least 1'},
-            {'name': 'pickupAt', 'reason': 'Must be in the future'},
-          ],
-        }),
+        _response(
+          400,
+          _envelope(
+            code: 'VALIDATION_ERROR',
+            message: 'Request validation failed',
+            fieldErrors: {
+              'email': ['Invalid email address'],
+              'mobile': ['Enter 10 digits', 'Without 0 or +91'],
+            },
+          ),
+        ),
       );
 
       expect(mapped, isA<ValidationException>());
       final validation = mapped as ValidationException;
-      expect(validation.code, 'VALIDATION_FAILED');
+      expect(validation.errorCode, BackendErrorCode.validationError);
       expect(validation.fieldErrors, {
+        'email': ['Invalid email address'],
         'mobile': ['Enter 10 digits', 'Without 0 or +91'],
-        'patient.age': ['Must be at least 1'],
-        'pickupAt': ['Must be in the future'],
       });
     });
 
-    test('a map of field errors', () {
+    test('a single string message per field is accepted', () {
       final mapped = mapper.map(
-        _response(400, {
-          'errors': {
-            'pan': 'Enter 10 characters',
-            'ifsc': ['Unknown IFSC', 'Use capital letters'],
-          },
-        }),
+        _response(
+          422,
+          _envelope(
+            code: 'VALIDATION_ERROR',
+            fieldErrors: {'pan': 'Enter 10 characters'},
+          ),
+        ),
       );
 
       expect((mapped as ValidationException).fieldErrors, {
         'pan': ['Enter 10 characters'],
-        'ifsc': ['Unknown IFSC', 'Use capital letters'],
-      });
-    });
-
-    test('RFC 9457 invalid-params', () {
-      final mapped = mapper.map(
-        _response(400, {
-          'invalid-params': [
-            {'name': 'age', 'reason': 'must be a positive integer'},
-          ],
-        }),
-      );
-
-      expect((mapped as ValidationException).fieldErrors, {
-        'age': ['must be a positive integer'],
       });
     });
 
     test('field errors on another 4xx still make a validation error', () {
       final mapped = mapper.map(
-        _response(409, {
-          'errors': [
-            {'field': 'otp', 'message': 'Code expired'},
-          ],
-        }),
+        _response(
+          409,
+          _envelope(
+            code: 'CONFLICT',
+            fieldErrors: {
+              'otp': ['Code expired'],
+            },
+          ),
+        ),
       );
 
       expect(mapped, isA<ValidationException>());
@@ -216,11 +271,15 @@ void main() {
 
     test('field errors on a 5xx stay a server error', () {
       final mapped = mapper.map(
-        _response(500, {
-          'errors': [
-            {'field': 'otp', 'message': 'Code expired'},
-          ],
-        }),
+        _response(
+          500,
+          _envelope(
+            code: 'INTERNAL_ERROR',
+            fieldErrors: {
+              'otp': ['Code expired'],
+            },
+          ),
+        ),
       );
 
       expect(mapped, isA<ServerException>());
@@ -234,11 +293,18 @@ void main() {
     });
 
     test('field errors cannot be modified', () {
-      final mapped = mapper.map(
-        _response(422, {
-          'errors': {'pan': 'Required'},
-        }),
-      ) as ValidationException;
+      final mapped =
+          mapper.map(
+                _response(
+                  422,
+                  _envelope(
+                    fieldErrors: {
+                      'pan': ['Required'],
+                    },
+                  ),
+                ),
+              )
+              as ValidationException;
 
       expect(() => mapped.fieldErrors['x'] = [], throwsUnsupportedError);
       expect(() => mapped.fieldErrors['pan']!.add('y'), throwsUnsupportedError);

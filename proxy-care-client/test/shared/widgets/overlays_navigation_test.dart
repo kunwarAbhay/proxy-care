@@ -1,6 +1,7 @@
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:proxy_care_client/core/l10n/generated/app_localizations.dart';
 import 'package:proxy_care_client/core/theme/app_density.dart';
 import 'package:proxy_care_client/core/theme/app_theme.dart';
 import 'package:proxy_care_client/core/theme/system_ui.dart';
@@ -9,7 +10,6 @@ import 'package:proxy_care_client/shared/widgets/pc_bottom_sheet.dart';
 import 'package:proxy_care_client/shared/widgets/pc_button.dart';
 import 'package:proxy_care_client/shared/widgets/pc_dialog.dart';
 import 'package:proxy_care_client/shared/widgets/pc_focus_ring.dart';
-import 'package:proxy_care_client/shared/widgets/pc_icon.dart';
 import 'package:proxy_care_client/shared/widgets/pc_layout.dart';
 import 'package:proxy_care_client/shared/widgets/pc_navigation_bar.dart';
 import 'package:proxy_care_client/shared/widgets/pc_notification.dart';
@@ -27,6 +27,8 @@ Future<void> _pumpLauncher(
   return tester.pumpWidget(
     MaterialApp(
       theme: buildProxyCareTheme(),
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
       home: Scaffold(
         appBar: appBar,
         bottomNavigationBar: bottomNavigationBar,
@@ -161,7 +163,7 @@ void main() {
       final decoration = box.decoration! as BoxDecoration;
       expect(decoration.color, PcPalette.neutral800);
       expect(decoration.boxShadow, isNotEmpty);
-      expect(find.byType(PcIcon), findsOneWidget);
+      expect(find.byType(Icon), findsOneWidget);
     });
 
     testWidgets('heads-up notification is tappable as a whole', (
@@ -171,7 +173,7 @@ void main() {
       await pumpThemed(
         tester,
         PcHeadsUpNotification(
-          icon: const PcIcon(PcGlyph.check),
+          icon: const Icon(Icons.check),
           title: 'Ravi reached the hospital',
           body: 'OPD registration started',
           actionLabel: 'View',
@@ -211,6 +213,8 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           theme: buildProxyCareTheme(),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
           home: Builder(
             builder: (context) => TextButton(
               onPressed: () => Navigator.of(context).push(
@@ -267,10 +271,10 @@ void main() {
       selectedIndex: selected,
       onSelected: (_) {},
       destinations: const [
-        PcNavDestination(icon: PcIcon(PcGlyph.check), label: 'Home'),
-        PcNavDestination(icon: PcIcon(PcGlyph.check), label: 'Visits'),
-        PcNavDestination(icon: PcIcon(PcGlyph.check), label: 'Payments'),
-        PcNavDestination(icon: PcIcon(PcGlyph.check), label: 'Family'),
+        PcNavDestination(icon: Icon(Icons.check), label: 'Home'),
+        PcNavDestination(icon: Icon(Icons.check), label: 'Visits'),
+        PcNavDestination(icon: Icon(Icons.check), label: 'Payments'),
+        PcNavDestination(icon: Icon(Icons.check), label: 'Family'),
       ],
     );
 
@@ -295,6 +299,8 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           theme: buildProxyCareTheme(AppDensity.comfortable),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
           home: Scaffold(bottomNavigationBar: bar(1)),
         ),
       );
@@ -309,6 +315,8 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           theme: buildProxyCareTheme(),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
           home: Scaffold(
             body: Align(
               alignment: Alignment.bottomCenter,

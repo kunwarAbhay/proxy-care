@@ -6,7 +6,6 @@ import '../../core/theme/tokens/pc_shape.dart';
 import '../../core/theme/tokens/pc_sizes.dart';
 import '../../core/theme/tokens/pc_spacing.dart';
 import '../../core/theme/tokens/pc_typography.dart';
-import 'pc_icon.dart';
 import 'pc_state_layer.dart';
 
 /// A single card holding rows separated by hairlines (ListGroup page): the
@@ -133,8 +132,8 @@ class PcListRow extends StatelessWidget {
             ],
             if (onTap != null) ...[
               const SizedBox(width: PcSpacing.space3),
-              PcIcon(
-                PcGlyph.chevronRight,
+              Icon(
+                Icons.chevron_right,
                 size: PcSizes.iconMd,
                 color: colors.textMuted,
               ),

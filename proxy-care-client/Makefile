@@ -1,29 +1,37 @@
 # Developer commands for the Proxy Care client. Run from this directory.
 #
-#   make get                      Resolve dependencies
-#   make gen                      Run code generation (build_runner)
+#   make get                      Resolve dependencies (updates pubspec.lock)
+#   make get-locked               Resolve exactly what pubspec.lock pins
+#   make gen                      Code generation (build_runner, gen-l10n)
 #   make format                   Format Dart sources
 #   make format-check             Fail if any Dart source is not formatted
 #   make analyze                  Static analysis (strict)
 #   make test                     Run all tests
-#   make check-env [ENV=...]      Validate config/$(ENV).json
+#   make check-env [ENV=...]      Validate config/env/$(ENV).json
 #   make build-web [ENV=...]      Validate config, then release web build
 #
-# ENV defaults to development. Other environments read config/<ENV>.json,
-# e.g. `make build-web ENV=production` uses config/production.json.
+# ENV defaults to development. Other environments read config/env/<ENV>.json,
+# e.g. `make build-web ENV=production` uses config/env/production.json.
+#
+# pubspec.lock and generated files are committed: after `make get` or
+# `make gen`, commit what changed.
 
 FLUTTER ?= flutter
 DART ?= dart
 ENV ?= development
-DEFINES_FILE ?= config/$(ENV).json
+DEFINES_FILE ?= config/env/$(ENV).json
 
-.PHONY: get gen format format-check analyze test check-env build-web
+.PHONY: get get-locked gen format format-check analyze test check-env build-web
 
 get:
 	$(FLUTTER) pub get
 
+get-locked:
+	$(FLUTTER) pub get --enforce-lockfile
+
 gen:
-	$(DART) run build_runner build
+	$(DART) run build_runner build --delete-conflicting-outputs
+	$(FLUTTER) gen-l10n
 
 format:
 	$(DART) format .

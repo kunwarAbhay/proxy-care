@@ -1,6 +1,7 @@
 import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
 
+import '../../core/l10n/generated/app_localizations.dart';
 import '../../core/theme/pc_theme.dart';
 import '../../core/theme/tokens/pc_shape.dart';
 import '../../core/theme/tokens/pc_sizes.dart';
@@ -25,8 +26,8 @@ class PcOtpInput extends StatefulWidget {
     this.onChanged,
     this.onCompleted,
     this.autofocus = false,
-    this.semanticLabel = 'One-time code',
-    this.cellLabel = _defaultCellLabel,
+    this.semanticLabel,
+    this.cellLabel,
   });
 
   /// Number of cells.
@@ -51,14 +52,12 @@ class PcOtpInput extends StatefulWidget {
   /// Whether the field takes focus when first shown.
   final bool autofocus;
 
-  /// Label of the whole field.
-  final String semanticLabel;
+  /// Label of the whole field. Defaults to the localized "One-time code".
+  final String? semanticLabel;
 
   /// Builds each cell's label from its 1-based position and the length.
-  final String Function(int position, int length) cellLabel;
-
-  static String _defaultCellLabel(int position, int length) =>
-      'Digit $position of $length';
+  /// Defaults to the localized "Digit n of 6".
+  final String Function(int position, int length)? cellLabel;
 
   @override
   State<PcOtpInput> createState() => _PcOtpInputState();
@@ -100,6 +99,8 @@ class _PcOtpInputState extends State<PcOtpInput> {
   @override
   Widget build(BuildContext context) {
     final colors = context.pc.colors;
+    final l10n = AppLocalizations.of(context);
+    final cellLabel = widget.cellLabel ?? l10n.a11yOtpDigit;
     final text = _controller.text;
     final hasError = widget.error != null;
     final activeIndex = _focusNode.hasFocus
@@ -113,7 +114,7 @@ class _PcOtpInputState extends State<PcOtpInput> {
         if (i > 0) const SizedBox(width: PcSpacing.space2),
         Expanded(
           child: Semantics(
-            label: widget.cellLabel(i + 1, PcOtpInput.length),
+            label: cellLabel(i + 1, PcOtpInput.length),
             value: i < text.length ? text[i] : '',
             child: Container(
               height: PcSizes.otpCell,
@@ -154,7 +155,7 @@ class _PcOtpInputState extends State<PcOtpInput> {
           children: [
             Positioned.fill(
               child: Semantics(
-                label: widget.semanticLabel,
+                label: widget.semanticLabel ?? l10n.a11yOtpField,
                 textField: true,
                 child: Opacity(
                   opacity: 0,

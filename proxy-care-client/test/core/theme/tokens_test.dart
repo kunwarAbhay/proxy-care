@@ -197,7 +197,8 @@ void main() {
         expect(style.fontSize! * style.height!, closeTo(lineHeight, 0.001));
         expect(style.fontWeight, weight);
         expect(style.letterSpacing, tracking);
-        expect(style.fontFamily, 'Roboto');
+        // Native platform typeface for Latin text; bundled Devanagari.
+        expect(style.fontFamily, isNull);
         expect(style.fontFamilyFallback, ['Noto Sans Devanagari']);
       });
     }

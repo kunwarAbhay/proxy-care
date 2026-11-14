@@ -75,12 +75,14 @@ lib/
 │   ├── constants/           Feature-agnostic constants, one file per topic
 │   ├── di/                  Core providers, root container, bootstrap
 │   ├── error/               Exceptions, failures, error mapper, repository
-│   │                        guard, global error handlers
+│   │                        guard, crash reporter, global error handlers
+│   ├── l10n/                ARB strings, generated localizations, error
+│   │                        messages
 │   ├── network/             Dio client, interceptors, network errors
 │   ├── router/              GoRouter set-up
 │   ├── security/            Secure storage and tokens
 │   ├── services/            Other cross-cutting services
-│   ├── theme/               Design-system tokens and ThemeData
+│   ├── theme/               Design-system tokens, breakpoints, ThemeData
 │   ├── utils/               Pure helpers
 │   └── widgets/             App-shell widgets (no product screens)
 ├── features/
@@ -132,7 +134,7 @@ locator and no global mutable singleton.
 
 | Providers | File |
 | --- | --- |
-| Infrastructure (env, logger, error reporter, error mapper, later Dio, storage, router) | `core/di/core_providers.dart` |
+| Infrastructure (env, logger, error reporter, crash reporter, error mapper, later Dio, storage, router) | `core/di/core_providers.dart` |
 | A feature's data sources, repositories and use cases | `features/<feature>/<feature>_providers.dart` |
 | A feature's controllers | Next to the controller in `presentation/controllers/` |
 | Root overrides | `core/di/app_container.dart` (`createAppContainer`) |
@@ -298,8 +300,8 @@ Three kinds of error, each with its own type and its own layer:
 
 | Kind | Type | Produced by | Seen by |
 | --- | --- | --- | --- |
-| Infrastructure exception | `AppException` (sealed): `NetworkException`, `UnauthorizedException`, `ForbiddenException`, `NotFoundException`, `ValidationException` (field errors), `ServerException` (incl. `invalidResponse`), `TimeoutException`, `CancelledException`, `UnknownException` | `ErrorMapper` from Dio errors, HTTP statuses, backend problem+json bodies and serialization errors | Core and data only |
-| Application failure | `AppFailure` (sealed): `NetworkFailure` (incl. timeouts), `UnauthorizedFailure`, `ForbiddenFailure`, `NotFoundFailure`, `ValidationFailure`, `ServerFailure`, `CancelledFailure`, `UnexpectedFailure` | Repositories, from an `AppException` (`toFailure()`) | Domain and presentation |
+| Infrastructure exception | `AppException` (sealed): `NetworkException`, `UnauthorizedException`, `ForbiddenException`, `NotFoundException`, `ValidationException` (field errors), `ServerException` (incl. `invalidResponse`), `TimeoutException`, `CancelledException`, `UnknownException` | `ErrorMapper` from Dio errors, HTTP statuses, the backend error envelope and serialization errors | Core and data only |
+| Application failure | `AppFailure` (sealed): `NetworkFailure` (incl. timeouts), `UnauthorizedFailure`, `ForbiddenFailure`, `NotFoundFailure`, `ValidationFailure`, `ConflictFailure`, `BusinessRuleFailure`, `RateLimitedFailure`, `ServiceUnavailableFailure`, `ServerFailure`, `CancelledFailure`, `UnexpectedFailure` | Repositories, from an `AppException` (`toFailure()`) | Domain and presentation |
 | Domain failure | subclasses of `DomainFailure` (an `AppFailure`) | Features, for business rules | Domain and presentation |
 
 Programming errors (`Error`: `TypeError`, `StateError`, failed asserts) are
@@ -341,26 +343,68 @@ Future<Result<Profile>> getProfile() => guardResult(
 
 ### Backend errors
 
-The backend answers errors with `application/problem+json` (RFC 9457).
-`BackendError.parse` reads `detail` / `title` as the developer message,
-`code` / `errorCode` as the backend code and `errors` / `invalid-params` as
-field errors (list or map). Status mapping:
+Every endpoint answers errors with the standard envelope:
 
-| Status | Exception |
+```json
+{
+  "success": false,
+  "data": null,
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Request validation failed",
+    "fieldErrors": { "email": ["Invalid email address"] }
+  },
+  "meta": { "timestamp": "2026-11-14T10:00:00Z", "correlationId": "abc-123" }
+}
+```
+
+`BackendError.parse` reads `error.code`, `error.message` (logs only),
+`error.fieldErrors` and `meta.correlationId`. An endpoint with a different
+structure passes its own `BackendErrorParser` to `ErrorMapper` (or to one
+`fromResponse` call); the default is never guessed per response. The
+standard codes are `BackendErrorCode` (`VALIDATION_ERROR`, `UNAUTHENTICATED`,
+`FORBIDDEN`, `NOT_FOUND`, `CONFLICT`, `BUSINESS_RULE_VIOLATION`,
+`RATE_LIMITED`, `REQUEST_TIMEOUT`, `INTERNAL_ERROR`, `SERVICE_UNAVAILABLE`);
+an unknown code is kept as a raw string.
+
+The HTTP status is authoritative; the code only refines what the status
+leaves open. Error handling never depends on the message text.
+
+| Status | Exception → failure |
 | --- | --- |
-| 400, 422, or any 4xx with field errors | `ValidationException` |
-| 401 | `UnauthorizedException` |
-| 403 | `ForbiddenException` |
-| 404, 410 | `NotFoundException` |
-| 408, 504 | `TimeoutException` |
-| any other (409, 429, 5xx, …) | `ServerException` with status and code |
+| any 4xx with field errors | `ValidationException` → `ValidationFailure` |
+| 400, 422 | `ValidationException`, unless the code is `BUSINESS_RULE_VIOLATION` → `BusinessRuleFailure` |
+| 401 | `UnauthorizedException` → `UnauthorizedFailure` |
+| 403 | `ForbiddenException` → `ForbiddenFailure` |
+| 404, 410 | `NotFoundException` → `NotFoundFailure` |
+| 408, 504 | `TimeoutException` → `NetworkFailure(isTimeout: true)` |
+| 409 | `ServerException` → `ConflictFailure` |
+| 429 | `ServerException` → `RateLimitedFailure` |
+| 503 | `ServerException` → `ServiceUnavailableFailure` |
+| other 4xx | `ServerException` → by code (`BUSINESS_RULE_VIOLATION`, `CONFLICT`, `RATE_LIMITED`), else `ServerFailure` |
+| other 5xx | `ServerException` → `ServerFailure` (`ServiceUnavailableFailure` if the code says so) |
 
-### Presentation
+### Presentation: user-facing messages
 
-Screens switch on the `AppFailure` type (and `code` where needed) to choose
-localized copy, following the design system's error-state rule: say what
-happened and the consequence, offer recovery, never blame the user.
-`message` and `cause` are developer-facing and are never shown.
+All user-facing text lives in ARB files (`lib/core/l10n/arb/`, English for
+now). `UserErrorKind.of(failure)` (pure Dart) picks the message category;
+`AppLocalizations.failureMessage(failure)` returns its localized text, and
+`fieldErrorMessage(failure, field)` the text for a rejected form field (the
+localized validation message by default; the backend's field text only when
+a screen opts in, since it is not localized). Screens never show
+`AppFailure.message`, backend messages, exception text or stack traces. A
+cancelled operation has no message. Feature `DomainFailure`s show the
+business-rule message unless the feature adds its own string.
+
+### Crash reporting
+
+`ErrorReporter` (`LoggerErrorReporter`) logs every unhandled error and
+forwards a `CrashReport` to the vendor-independent `CrashReporter`
+(`crashReporterProvider`, a `NoopCrashReporter` for the MVP; Firebase
+Crashlytics is backlog LL-05). A `CrashReport` carries only the error type,
+stack trace, context and whether it was fatal, never the error object or
+its message, so healthcare information, patient data and tokens cannot reach
+a crash-reporting service.
 
 ### Global handlers
 

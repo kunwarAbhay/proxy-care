@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:proxy_care_client/core/l10n/generated/app_localizations.dart';
 import 'package:proxy_care_client/core/theme/app_density.dart';
 import 'package:proxy_care_client/core/theme/app_theme.dart';
 
@@ -16,6 +17,8 @@ Future<void> pumpThemed(
     MaterialApp(
       theme: buildProxyCareTheme(density),
       themeAnimationDuration: Duration.zero,
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
       home: Scaffold(
         body: Center(
           child: Padding(padding: const EdgeInsets.all(16), child: child),

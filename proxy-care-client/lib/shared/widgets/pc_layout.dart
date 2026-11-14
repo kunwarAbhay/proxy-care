@@ -1,5 +1,6 @@
 import 'package:material_ui/material_ui.dart';
 
+import '../../core/theme/pc_theme.dart';
 import '../../core/theme/tokens/pc_spacing.dart';
 
 /// The bottom action area (section 3 and usage rules): padded 16 / 24 / 24
@@ -38,3 +39,35 @@ class PcBottomActionArea extends StatelessWidget {
     );
   }
 }
+
+/// Centers [child] and limits it to the theme's maximum content width
+/// (provisionally 720dp) on wide windows such as tablets. On phones it has
+/// no effect.
+///
+/// Use it on content surfaces that read badly when stretched (forms,
+/// reading columns, the bottom action area); full-bleed surfaces such as
+/// maps, app bars and navigation bars stay full width.
+class PcConstrainedContent extends StatelessWidget {
+  /// Creates a constrained content surface.
+  const PcConstrainedContent({super.key, required this.child, this.maxWidth});
+
+  /// The content.
+  final Widget child;
+
+  /// Overrides the theme's maximum content width.
+  final double? maxWidth;
+
+  @override
+  Widget build(BuildContext context) {
+    return Align(
+      alignment: Alignment.topCenter,
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxWidth: maxWidth ?? context.pc.layout.maxContentWidth,
+        ),
+        child: child,
+      ),
+    );
+  }
+}
+

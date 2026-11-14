@@ -6,7 +6,6 @@ import '../../core/theme/tokens/pc_shape.dart';
 import '../../core/theme/tokens/pc_sizes.dart';
 import '../../core/theme/tokens/pc_spacing.dart';
 import 'pc_focus_ring.dart';
-import 'pc_icon.dart';
 import 'pc_state_layer.dart';
 
 /// Border, fill and accent of a selection card in its current state.
@@ -325,8 +324,8 @@ class PcCheckboxTile extends StatelessWidget {
                     width: PcBorders.thick,
                   ),
                 ),
-                child: PcIcon(
-                  PcGlyph.check,
+                child: Icon(
+                  Icons.check,
                   size: PcSizes.checkBadge - 2 * PcBorders.thick,
                   color: colors.onPrimary,
                 ),

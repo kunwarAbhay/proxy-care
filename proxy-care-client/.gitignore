@@ -28,7 +28,7 @@ migrate_working_dir/
 /build/
 /coverage/
 
-# Real staging/production defines are kept out of the repo until the team
-# decides where they live; the *.example.json files show the shape.
-/config/staging.json
-/config/production.json
+# pubspec.lock and generated Dart files (*.g.dart, *.freezed.dart,
+# lib/core/l10n/generated/) are committed on purpose; CI fails if they are
+# out of date. Never commit secrets: config/env/*.json holds non-sensitive
+# values only.

@@ -12,9 +12,17 @@
 /// needs both imports `dart:async` with `hide TimeoutException`.
 library;
 
+import 'backend_error_code.dart';
+
 /// Base of the infrastructure exception hierarchy.
 sealed class AppException implements Exception {
-  const AppException(this.message, {this.statusCode, this.code, this.cause});
+  const AppException(
+    this.message, {
+    this.statusCode,
+    this.code,
+    this.correlationId,
+    this.cause,
+  });
 
   /// Developer-facing description.
   final String message;
@@ -22,8 +30,16 @@ sealed class AppException implements Exception {
   /// HTTP status, when the error came from a response.
   final int? statusCode;
 
-  /// Machine-readable error code sent by the backend, if any.
+  /// Machine-readable error code sent by the backend (`error.code`), as
+  /// sent. See [errorCode] for the standard codes.
   final String? code;
+
+  /// The backend's `meta.correlationId`, for tracing a request in backend
+  /// logs.
+  final String? correlationId;
+
+  /// [code] as a standard [BackendErrorCode], or null if it is not one.
+  BackendErrorCode? get errorCode => BackendErrorCode.fromWire(code);
 
   /// The original error (for example the `DioException`), for logs.
   final Object? cause;
@@ -51,8 +67,15 @@ final class UnauthorizedException extends AppException {
   const UnauthorizedException({
     String message = 'Authentication is required.',
     String? code,
+    String? correlationId,
     Object? cause,
-  }) : super(message, statusCode: 401, code: code, cause: cause);
+  }) : super(
+         message,
+         statusCode: 401,
+         code: code,
+         correlationId: correlationId,
+         cause: cause,
+       );
 }
 
 /// The credentials are valid but not allowed to do this (HTTP 403).
@@ -61,8 +84,15 @@ final class ForbiddenException extends AppException {
   const ForbiddenException({
     String message = 'The action is not allowed.',
     String? code,
+    String? correlationId,
     Object? cause,
-  }) : super(message, statusCode: 403, code: code, cause: cause);
+  }) : super(
+         message,
+         statusCode: 403,
+         code: code,
+         correlationId: correlationId,
+         cause: cause,
+       );
 }
 
 /// The resource does not exist or no longer exists (HTTP 404 / 410).
@@ -72,8 +102,15 @@ final class NotFoundException extends AppException {
     String message = 'The resource was not found.',
     int statusCode = 404,
     String? code,
+    String? correlationId,
     Object? cause,
-  }) : super(message, statusCode: statusCode, code: code, cause: cause);
+  }) : super(
+         message,
+         statusCode: statusCode,
+         code: code,
+         correlationId: correlationId,
+         cause: cause,
+       );
 }
 
 /// The backend rejected the input (HTTP 400 / 422, or any 4xx that carries
@@ -88,28 +125,43 @@ final class ValidationException extends AppException {
     Map<String, List<String>> fieldErrors = const {},
     int? statusCode = 400,
     String? code,
+    String? correlationId,
     Object? cause,
   }) : fieldErrors = Map.unmodifiable({
          for (final MapEntry(:key, :value) in fieldErrors.entries)
            key: List<String>.unmodifiable(value),
        }),
-       super(message, statusCode: statusCode, code: code, cause: cause);
+       super(
+         message,
+         statusCode: statusCode,
+         code: code,
+         correlationId: correlationId,
+         cause: cause,
+       );
 
   /// Messages per field; empty when the error is not about a field.
   final Map<String, List<String>> fieldErrors;
 }
 
 /// The backend failed (HTTP 5xx), answered with a status that has no more
-/// specific type, or sent a response the client could not read.
+/// specific type (409 conflict, 429 rate limited, a 4xx business-rule
+/// violation…), or sent a response the client could not read.
 final class ServerException extends AppException {
   /// Creates a server exception.
   const ServerException({
     String message = 'The server failed to handle the request.',
     int? statusCode,
     String? code,
+    String? correlationId,
     this.invalidResponse = false,
     Object? cause,
-  }) : super(message, statusCode: statusCode, code: code, cause: cause);
+  }) : super(
+         message,
+         statusCode: statusCode,
+         code: code,
+         correlationId: correlationId,
+         cause: cause,
+       );
 
   /// A response that could not be decoded or did not match the expected
   /// shape (a serialization error).
@@ -135,8 +187,16 @@ final class TimeoutException extends AppException {
   const TimeoutException({
     String message = 'The request timed out.',
     int? statusCode,
+    String? code,
+    String? correlationId,
     Object? cause,
-  }) : super(message, statusCode: statusCode, cause: cause);
+  }) : super(
+         message,
+         statusCode: statusCode,
+         code: code,
+         correlationId: correlationId,
+         cause: cause,
+       );
 }
 
 /// The request was cancelled by the app (for example the screen closed).

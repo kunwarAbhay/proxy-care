@@ -28,8 +28,13 @@ final class Env {
       appName: const String.fromEnvironment(appNameKey),
       enableLogging: const String.fromEnvironment(enableLoggingKey),
       featureFlags: const String.fromEnvironment(featureFlagsKey),
+      requireExplicitEnvironment: isReleaseBuild,
     );
   }
+
+  /// Whether this is a release (product) build. Release builds must name
+  /// their environment, so they never fall back to development.
+  static const bool isReleaseBuild = bool.fromEnvironment('dart.vm.product');
 
   /// Name of the define that selects the environment.
   static const appEnvKey = 'APP_ENV';
@@ -92,8 +97,11 @@ final class Env {
   /// checked before throwing, so one failed build reports every problem.
   ///
   /// Rules:
-  /// * `APP_ENV`: `development`, `staging` or `production` (any case);
-  ///   defaults to `development`.
+  /// * `APP_ENV`: `development`, `staging` or `production` (any case).
+  ///   Defaults to `development` only when [requireExplicitEnvironment] is
+  ///   false (debug builds and tests); release builds and `tool/check_env`
+  ///   require it, so a production build can never silently become a
+  ///   development one.
   /// * `API_BASE_URL`: absolute http(s) URL without query or fragment.
   ///   Required, and must use https, in staging and production; production
   ///   must not point to a local host. Defaults to [developmentApiBaseUrl]
@@ -108,10 +116,15 @@ final class Env {
     required String appName,
     required String enableLogging,
     required String featureFlags,
+    bool requireExplicitEnvironment = false,
   }) {
     final errors = <String>[];
 
-    final environment = _parseEnvironment(appEnv, errors);
+    final environment = _parseEnvironment(
+      appEnv,
+      errors,
+      required: requireExplicitEnvironment,
+    );
     // An unknown APP_ENV is checked against the strictest (production) rules
     // so that no other problem is hidden behind it.
     final rules = environment ?? AppEnvironment.production;
@@ -133,9 +146,17 @@ final class Env {
     );
   }
 
-  static AppEnvironment? _parseEnvironment(String raw, List<String> errors) {
+  static AppEnvironment? _parseEnvironment(
+    String raw,
+    List<String> errors, {
+    required bool required,
+  }) {
     final value = raw.trim().toLowerCase();
     if (value.isEmpty) {
+      if (required) {
+        errors.add('$appEnvKey is required in release builds.');
+        return null;
+      }
       return AppEnvironment.development;
     }
     final environment = AppEnvironment.values.asNameMap()[value];

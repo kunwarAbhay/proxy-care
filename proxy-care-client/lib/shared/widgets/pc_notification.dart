@@ -1,12 +1,12 @@
 import 'package:material_ui/material_ui.dart';
 
+import '../../core/l10n/generated/app_localizations.dart';
 import '../../core/theme/pc_theme.dart';
 import '../../core/theme/tokens/pc_elevation.dart';
 import '../../core/theme/tokens/pc_shape.dart';
 import '../../core/theme/tokens/pc_sizes.dart';
 import '../../core/theme/tokens/pc_spacing.dart';
 import '../../core/theme/tokens/pc_typography.dart';
-import 'pc_icon.dart';
 import 'pc_state_layer.dart';
 
 /// How long a snackbar stays (Notification page: auto-dismiss 5s).
@@ -66,8 +66,8 @@ class PcSnackBarContent extends StatelessWidget {
         ),
         child: Row(
           children: [
-            PcIcon(
-              PcGlyph.check,
+            Icon(
+              Icons.check,
               size: PcSizes.iconMd,
               color: colors.inversePrimary,
             ),
@@ -220,7 +220,7 @@ class PcInfoTip extends StatelessWidget {
     required this.title,
     required this.body,
     required this.onClose,
-    this.closeLabel = 'Close',
+    this.closeLabel,
   });
 
   /// Tip title.
@@ -232,8 +232,9 @@ class PcInfoTip extends StatelessWidget {
   /// Called by the close button.
   final VoidCallback onClose;
 
-  /// Screen-reader label of the close button.
-  final String closeLabel;
+  /// Screen-reader label of the close button. Defaults to the localized
+  /// "Close".
+  final String? closeLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -293,8 +294,8 @@ class PcInfoTip extends StatelessWidget {
                 visualDensity: VisualDensity.standard,
               ),
               icon: Semantics(
-                label: closeLabel,
-                child: const ExcludeSemantics(child: PcIcon(PcGlyph.close)),
+                label: closeLabel ?? AppLocalizations.of(context).a11yClose,
+                child: const ExcludeSemantics(child: Icon(Icons.close)),
               ),
             ),
           ],

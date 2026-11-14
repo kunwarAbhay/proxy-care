@@ -20,7 +20,8 @@ Imports: `core/theme/theme.dart` (tokens and theme) and
 | Semantic states (success / warning / error / info) and the tint rule (1) | `PcTone` + `PcToneColors(container, accent, onContainer)` | `tokens/pc_colors.dart` |
 | Type tokens `display` … `code`, `c-*` (2) | `PcTypeScale.<token>` (`TextStyle`, exact size / line height / weight / tracking) | `tokens/pc_typography.dart` |
 | Density-dependent text roles (2) | `PcTextStyles.standard` / `.comfortable` | `tokens/pc_typography.dart` |
-| Families: Roboto, Noto Sans Devanagari (2) | `PcFonts.family`, `PcFonts.fallback` | `tokens/pc_typography.dart` |
+| Families: Roboto, Noto Sans Devanagari (2) | MVP decision: platform default typeface (no family set) + bundled `PcFonts.devanagari` as `PcFonts.fallback` | `tokens/pc_typography.dart`, `assets/fonts/` |
+| Breakpoints (not in the spec) | `PcBreakpoints.provisional`: compact < 600dp, expanded ≥ 600dp, max content 720dp; `context.pcWindowClass`, `PcConstrainedContent` | `tokens/pc_breakpoints.dart` |
 | Spacing `space-0.5` … `space-12`, insets 24 / 16 (3) | `PcSpacing.spaceHalf`, `space1` … `space12`, `textInset`, `cardInset` | `tokens/pc_spacing.dart` |
 | Frame, chrome and component sizes `size-*` (3, 5, 6) | `PcSizes` | `tokens/pc_sizes.dart` |
 | Radii `radius-xs` … `radius-full` (4) | `PcRadii.xs`, `sm`, `md`, `lg`, `xl`, `xxl` (2xl), `xxxl` (3xl), `full` | `tokens/pc_shape.dart` |
@@ -71,7 +72,7 @@ Imports: `core/theme/theme.dart` (tokens and theme) and
 | Empty & result state | `PcEmptyState` (+ `PcDashedBorderPainter`), `PcResultState` |
 | Bottom action area (layout) | `PcBottomActionArea` |
 | Focus ring (recommended state) | `PcFocusRing`, used by every focusable component |
-| Icons the components draw (check, back, close, chevrons, error) | `PcIcon` / `PcGlyph` |
+| Icons (section 5) | Flutter's built-in Material icons (`Icons.check`, `Icons.arrow_back`, `Icons.close`, `Icons.chevron_right`, `Icons.expand_more`, `Icons.error_outline`) |
 
 ### Not implemented in this milestone
 
@@ -95,9 +96,8 @@ dependency or decision first:
   camera / upload flow.
 - **Search / loading illustration** (concentric circles). It belongs to the
   matching screen.
-- **Full icon set.** The spec describes a custom outline set but does not
-  supply it. Components accept any icon widget; `PcIcon` covers only the
-  glyphs components need internally.
+- **Custom icon set.** The spec describes a custom outline set; the MVP
+  decision is Flutter's built-in Material icons.
 
 ## Ambiguities
 
@@ -107,9 +107,9 @@ what the right-hand column says, and nothing else is assumed.
 | # | Spec | Ambiguity | What the code does |
 | --- | --- | --- | --- |
 | A1 | "Light theme only (no dark theme exists in the designs)" | Dark theme, system theme and a user theme preference are not specified | Only the light theme exists. `ThemeMode.light` comes from a provider, so a dark theme can be added without touching the app widget. Nothing is persisted (there is no preference to persist). |
-| A2 | Responsive breakpoints | None given. The frame is 390px, single column. | No breakpoints are defined. Layout is fluid at any width; whether to cap content width on tablets / desktop web is a pending decision. |
-| A3 | Fonts: "Roboto (Google Fonts)", Noto Sans Devanagari | The font files are not supplied | Styles name the families with the fallback. On web, Flutter loads Roboto and Devanagari fallback glyphs from Google Fonts. Bundling the fonts (offline, iOS) is a pending decision. |
-| A4 | Icons: "custom outline set" | The set is not supplied | Components take icon widgets from callers. `PcIcon` draws the 6 glyphs components need (check, arrow-left, close, chevron-right, chevron-down, alert-circle) on the 24px grid with stroke 2 (check 2.5), round caps (Lucide geometry). |
+| A2 | Responsive breakpoints | None given. The frame is 390px, single column. | MVP decision, provisional: compact below 600dp, adaptive tablet layout from 600dp, 720dp maximum width for constrained content surfaces only (`PcBreakpoints`, configurable through `PcTheme.layout`). |
+| A3 | Fonts: "Roboto (Google Fonts)", Noto Sans Devanagari | The font files are not supplied | MVP decision: the platform's native typeface for Latin text (no family set); Noto Sans Devanagari v2.007 bundled as static 400 / 500 / 700 instances (SIL OFL 1.1, licence in `assets/fonts/` and registered with `LicenseRegistry`). |
+| A4 | Icons: "custom outline set" | The set is not supplied | MVP decision: Flutter's built-in Material icons, sized by the spec's 18 / 20 / 24 icon tokens. Material icons are filled glyphs, so the spec's stroke widths (2, check 2.5) do not apply. |
 | A5 | No `color-secondary-500` exists | Material's `ColorScheme.secondary` needs a value | `secondary` = `color-primary-500`; `secondaryContainer` = `color-secondary-100`. |
 | A6 | Info tone accent is "—" | Icons in info notes need a color | Icons use the on-color `color-info-900` ("icon color follows the text"). |
 | A7 | Badge page: comfortable label "15", no line height | Line height missing | Keeps the `badge` token's 16px line height. |
@@ -118,7 +118,7 @@ what the right-hand column says, and nothing else is assumed.
 | A10 | Snackbar "padding 14 16", heads-up "padding 12 14" | 14 is off-grid; decision #18 maps 14 → 16 | Uses 16 (snackbar 16 / 16, heads-up 12 / 16). |
 | A11 | Note "gap 10–12", icon "18–20px" | A range | 12 and 20 (`size-icon-md`, which section 5 assigns to notes). |
 | A12 | Switch off thumb "16–20px" | A range | 16. The 4px inner padding is measured inside the 2px off border. |
-| A13 | Check mark stroke "2.5–3" | A range | 2.5. |
+| A13 | Check mark stroke "2.5–3" | A range | Not applicable with Material icons (A4). |
 | A14 | Section 7: 48px minimum targets; Chip page: 32px chips wrapping 8px apart | 32px chips are below 48px | Chips keep the specified 32 / 36px size and 8px wrap gap. Flutter's padded targets apply to buttons (40 / 44px buttons get a 48px target). |
 | A15 | Button page: disabled caption "under the button" | Gap and alignment missing | 8px gap (`space-2`), centered, `body-sm` muted. |
 | A16 | Button page: loading spinner 20px | Stroke width missing | 2px (`PcStrokes.icon`), in the label color. |

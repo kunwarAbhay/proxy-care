@@ -46,13 +46,19 @@ jobs:
       - name: Install dependencies
         run: make get
 
-      - name: Check formatting
-        run: |
-          make format
-          git diff --exit-code -- .
-
       - name: Generate code
         run: make gen
+
+      - name: Format
+        run: make format
+
+      # pubspec.lock, generated files (build_runner, gen-l10n) and formatting
+      # are committed; regenerating them must change nothing. New untracked
+      # files are included so the diff shows them too.
+      - name: Committed lockfile, generated code and formatting are current
+        run: |
+          git add --intent-to-add --all .
+          git diff --exit-code -- .
 
       - name: Analyze
         run: make analyze
@@ -60,20 +66,23 @@ jobs:
       - name: Test
         run: make test
 
-      - name: Reject a production config without an API URL
+      - name: Development config is valid
+        run: make check-env ENV=development
+
+      - name: Release configs never fall back to development
         run: |
-          if dart run tool/check_env.dart config/production.example.json; then
-            echo "check_env accepted an empty production API_BASE_URL"
+          # Without an API URL, production must be rejected.
+          jq '.API_BASE_URL = ""' config/env/production.json > /tmp/no_url.json
+          if dart run tool/check_env.dart /tmp/no_url.json; then
+            echo "check_env accepted production without API_BASE_URL"
+            exit 1
+          fi
+          # Without APP_ENV, a config must be rejected, not become development.
+          jq 'del(.APP_ENV)' config/env/development.json > /tmp/no_env.json
+          if dart run tool/check_env.dart /tmp/no_env.json; then
+            echo "check_env accepted a config without APP_ENV"
             exit 1
           fi
 
       - name: Build web (release, development config)
         run: make build-web
-
-      - name: Upload pubspec.lock
-        if: always()
-        uses: actions/upload-artifact@v7
-        with:
-          name: pubspec-lock
-          path: proxy-care-client/pubspec.lock
-          if-no-files-found: ignore

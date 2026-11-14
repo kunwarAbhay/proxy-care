@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:logger/logger.dart';
 
 import '../config/env.dart';
+import '../error/crash_reporter.dart';
 import '../error/error_mapper.dart';
 import '../error/error_reporter.dart';
 import '../error/logger_error_reporter.dart';
@@ -43,7 +44,17 @@ final loggerProvider = Provider<Logger>((ref) {
 ///
 /// Override it to send errors to a crash-reporting service.
 final errorReporterProvider = Provider<ErrorReporter>(
-  (ref) => LoggerErrorReporter(ref.watch(loggerProvider)),
+  (ref) => LoggerErrorReporter(
+    ref.watch(loggerProvider),
+    crashReporter: ref.watch(crashReporterProvider),
+  ),
+);
+
+/// Crash-reporting service. A no-op until Firebase Crashlytics is added
+/// (backlog LL-05); override it then. Receives only privacy-safe
+/// `CrashReport`s.
+final crashReporterProvider = Provider<CrashReporter>(
+  (ref) => const NoopCrashReporter(),
 );
 
 /// Translates infrastructure errors (Dio, HTTP status, backend error bodies,

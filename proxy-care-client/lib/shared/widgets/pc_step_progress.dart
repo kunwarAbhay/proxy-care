@@ -1,5 +1,6 @@
 import 'package:material_ui/material_ui.dart';
 
+import '../../core/l10n/generated/app_localizations.dart';
 import '../../core/theme/pc_theme.dart';
 import '../../core/theme/tokens/pc_shape.dart';
 import '../../core/theme/tokens/pc_sizes.dart';
@@ -31,7 +32,8 @@ class PcStepProgress extends StatelessWidget {
   /// Visible caption ("Step 2 of 5 · Basic info").
   final String? caption;
 
-  /// Screen-reader label for the bar. Defaults to "Step n of N".
+  /// Screen-reader label for the bar. Defaults to the localized "Step n of
+  /// N".
   final String? semanticLabel;
 
   @override
@@ -45,7 +47,9 @@ class PcStepProgress extends StatelessWidget {
         Semantics(
           container: true,
           image: true,
-          label: semanticLabel ?? 'Step $current of $total',
+          label:
+              semanticLabel ??
+              AppLocalizations.of(context).a11yStepProgress(current, total),
           excludeSemantics: true,
           child: Row(
             children: [

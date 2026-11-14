@@ -4,7 +4,9 @@
 ///
 /// Two kinds, kept apart:
 ///
-/// * **Application failures** (`NetworkFailure` … `UnexpectedFailure`)
+/// * **Application failures** (`NetworkFailure` … `UnexpectedFailure`,
+///   including `ConflictFailure`, `BusinessRuleFailure`,
+///   `RateLimitedFailure` and `ServiceUnavailableFailure`)
 ///   describe why an operation could not be completed, independent of the
 ///   transport. They are created from `AppException`s by repositories.
 /// * **Domain failures** extend [DomainFailure]. Features define them for
@@ -19,6 +21,8 @@
 /// `AsyncValue.error` (see `Result.getOrThrow`).
 library;
 
+import 'backend_error_code.dart';
+
 /// Base of every failure.
 sealed class AppFailure implements Exception {
   const AppFailure(this.message, {this.code, this.cause});
@@ -26,9 +30,12 @@ sealed class AppFailure implements Exception {
   /// Developer-facing description. Not shown to users.
   final String message;
 
-  /// Machine-readable backend code, when the backend sent one. Screens may
-  /// use it to pick a more specific message.
+  /// Machine-readable backend code, as sent. Screens may use it (through
+  /// [errorCode]) to pick a more specific message; never the [message].
   final String? code;
+
+  /// [code] as a standard [BackendErrorCode], or null.
+  BackendErrorCode? get errorCode => BackendErrorCode.fromWire(code);
 
   /// What caused it, for logs.
   final Object? cause;
@@ -108,6 +115,42 @@ final class ServerFailure extends AppFailure {
   /// 5xx errors are often temporary.
   @override
   bool get isRetryable => statusCode != null && statusCode! >= 500;
+}
+
+/// The data changed on the server meanwhile (HTTP 409, `CONFLICT`).
+final class ConflictFailure extends AppFailure {
+  /// Creates a conflict failure.
+  const ConflictFailure(super.message, {super.code, super.cause});
+
+  /// Retrying after a refresh may succeed.
+  @override
+  bool get isRetryable => true;
+}
+
+/// The backend refused the action because of a business rule
+/// (`BUSINESS_RULE_VIOLATION`). Features turn specific [code]s into their
+/// own [DomainFailure]s where a dedicated message is needed.
+final class BusinessRuleFailure extends AppFailure {
+  /// Creates a business-rule failure.
+  const BusinessRuleFailure(super.message, {super.code, super.cause});
+}
+
+/// Too many requests (HTTP 429, `RATE_LIMITED`).
+final class RateLimitedFailure extends AppFailure {
+  /// Creates a rate-limited failure.
+  const RateLimitedFailure(super.message, {super.code, super.cause});
+
+  @override
+  bool get isRetryable => true;
+}
+
+/// The service is down or overloaded (HTTP 503, `SERVICE_UNAVAILABLE`).
+final class ServiceUnavailableFailure extends AppFailure {
+  /// Creates a service-unavailable failure.
+  const ServiceUnavailableFailure(super.message, {super.code, super.cause});
+
+  @override
+  bool get isRetryable => true;
 }
 
 /// The operation was cancelled by the app. Screens usually ignore it.

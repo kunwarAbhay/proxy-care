@@ -7,7 +7,9 @@ import 'tokens/pc_shape.dart';
 import 'tokens/pc_sizes.dart';
 import 'tokens/pc_typography.dart';
 
-/// Builds the Proxy Care `ThemeData` at [density].
+/// Builds the Proxy Care `ThemeData` at [density]. No font family is set:
+/// Latin text uses the platform's native typeface and Devanagari falls back
+/// to the bundled Noto Sans Devanagari.
 ///
 /// The design system defines a light theme only, so there is no dark
 /// counterpart (see docs/design-system-mapping.md). Proxy Care components
@@ -25,7 +27,6 @@ ThemeData buildProxyCareTheme([AppDensity density = AppDensity.standard]) {
     colorScheme: proxyCareColorScheme(colors),
     scaffoldBackgroundColor: colors.bg,
     canvasColor: colors.bg,
-    fontFamily: PcFonts.family,
     fontFamilyFallback: PcFonts.fallback,
     textTheme: proxyCareTextTheme(text),
     // Interaction feedback is a flat state layer (8% hover, 12% pressed);
