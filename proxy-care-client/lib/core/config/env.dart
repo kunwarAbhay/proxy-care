@@ -345,7 +345,7 @@ final class Env {
       );
     }
 
-    if (!validUrl || url == null || _isSecretKey(key)) return (null, null);
+    if (!validUrl || _isSecretKey(key)) return (null, null);
     return (url.replace(path: url.path.replaceAll(_trailingSlashes, '')), key);
   }
 

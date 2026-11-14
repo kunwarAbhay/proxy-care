@@ -316,7 +316,7 @@ void main() {
     const write = Permission('records.write');
     const viewer = Role('viewer');
     const editor = Role('editor');
-    const service = AuthorizationService(
+    final service = AuthorizationService(
       RolePermissionPolicy({
         viewer: {read},
         editor: {read, write},
