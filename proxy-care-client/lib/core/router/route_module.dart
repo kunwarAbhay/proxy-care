@@ -1,6 +1,7 @@
 import 'package:flutter/widgets.dart';
 import 'package:go_router/go_router.dart';
 
+import '../config/env.dart';
 import 'navigation_payload.dart';
 import 'route_access.dart';
 import 'route_conventions.dart';
@@ -59,7 +60,7 @@ final class RouteConfigurationException implements Exception {
 /// the module name and unique. All problems are reported together in a
 /// [RouteConfigurationException].
 final class RouteRegistry {
-  RouteRegistry._(this.routes, this.notificationResolvers, this.routeNames);
+  RouteRegistry._(this.routes, this.notificationResolvers);
 
   /// Validates and assembles [modules].
   factory RouteRegistry(
@@ -111,7 +112,6 @@ final class RouteRegistry {
     return RouteRegistry._(
       List.unmodifiable(routes),
       Map.unmodifiable(resolvers),
-      Set.unmodifiable(routeNames),
     );
   }
 
@@ -121,9 +121,6 @@ final class RouteRegistry {
   /// Notification resolvers by payload type.
   final Map<String, NotificationLocationResolver> notificationResolvers;
 
-  /// Every registered route name.
-  final Set<String> routeNames;
-
   static void _check(
     RouteBase route, {
     required String module,
@@ -132,8 +129,12 @@ final class RouteRegistry {
     required Set<String> names,
     required List<String> problems,
   }) {
-    final isCovered =
-        covered || RouteAccess.fromMetadata(route.metadata) != null;
+    final access = RouteAccess.fromMetadata(route.metadata);
+    final isCovered = covered || access != null;
+    if (access case AuthenticatedAccess(:final feature?)
+        when !Env.featureFlagPattern.hasMatch(feature)) {
+      problems.add('feature "$feature" must be snake_case, as in FEATURE_FLAGS');
+    }
     switch (route) {
       case GoRoute(:final path, :final name):
         problems.addAll(

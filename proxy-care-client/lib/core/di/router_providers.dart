@@ -60,8 +60,8 @@ final routeRegistryProvider = Provider<RouteRegistry>(
 /// The app's single router. Re-runs its guards whenever the
 /// authentication state changes.
 final routerProvider = Provider<GoRouter>((ref) {
-  final refresh = RouterRefresh();
-  ref.listen(authenticationStateProvider, (_, _) => refresh.refresh());
+  final refresh = ValueNotifier(0);
+  ref.listen(authenticationStateProvider, (_, _) => refresh.value++);
   final router = createAppRouter(
     registry: ref.watch(routeRegistryProvider),
     options: ref.watch(routerOptionsProvider),
@@ -82,6 +82,5 @@ final notificationNavigatorProvider = Provider<NotificationNavigator>(
   (ref) => NotificationNavigator(
     router: ref.watch(routerProvider),
     resolvers: ref.watch(routeRegistryProvider).notificationResolvers,
-    deepLinks: ref.watch(routerOptionsProvider).deepLinks,
   ),
 );

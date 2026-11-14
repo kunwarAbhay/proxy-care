@@ -132,7 +132,7 @@ final class TestRouteModule extends RouteModule {
           TestRoutes.item.route(
             builder: (_, state) {
               final id = state.requirePathParameter('itemId');
-              final tab = state.queryParameter('tab') ?? '-';
+              final tab = state.uri.queryParameters['tab'] ?? '-';
               final extra = state.extra as String?;
               return Text('item $id tab $tab extra ${extra ?? '-'}');
             },

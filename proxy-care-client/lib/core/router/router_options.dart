@@ -14,8 +14,6 @@ final class RouterOptions {
     this.destinations = const RedirectDestinations(),
     this.deepLinks = const DeepLinkPolicy(),
     this.placeholderBuilder = defaultRouterPlaceholder,
-    this.redirectLimit = 5,
-    this.debugLogDiagnostics = false,
   });
 
   /// Where the app starts when the platform supplies no deep link. A deep
@@ -30,12 +28,6 @@ final class RouterOptions {
 
   /// What the router's fallback locations and its not-found page show.
   final RouterPlaceholderBuilder placeholderBuilder;
-
-  /// The most chained redirects before the router reports a loop.
-  final int redirectLimit;
-
-  /// Whether go_router logs every navigation (debugging only).
-  final bool debugLogDiagnostics;
 }
 
 /// The router's own routes: the fallback locations in [RouterLocations],

@@ -45,11 +45,9 @@ GoRouter createAppRouter({
     navigatorKey: navigatorKey,
     initialLocation: options.initialLocation,
     refreshListenable: refreshListenable,
-    redirectLimit: options.redirectLimit,
-    debugLogDiagnostics: options.debugLogDiagnostics,
     observers: observers,
     redirect: (context, state) =>
-        pipeline.redirect(routeRequestOf(state, authentication())),
+        pipeline.redirect(_routeRequestOf(state, authentication())),
     errorBuilder: (context, state) => options.placeholderBuilder(
       context,
       RouterPlaceholderKind.notFound,
@@ -59,7 +57,7 @@ GoRouter createAppRouter({
 }
 
 /// The guard input for a top-level redirect [state].
-RouteRequest routeRequestOf(
+RouteRequest _routeRequestOf(
   GoRouterState state,
   AuthenticationState authentication,
 ) => RouteRequest(
@@ -69,9 +67,3 @@ RouteRequest routeRequestOf(
   authentication: authentication,
   isUnmatched: state.topRoute == null || state.error != null,
 );
-
-/// Tells the router to run its guards again.
-final class RouterRefresh extends ChangeNotifier {
-  /// Notifies the router.
-  void refresh() => notifyListeners();
-}

@@ -72,7 +72,8 @@ final class Env {
   /// Display name used when `APP_NAME` is not supplied.
   static const defaultAppName = 'Proxy Care';
 
-  static final RegExp _featureFlagPattern = RegExp(r'^[a-z][a-z0-9_]*$');
+  /// A valid feature flag name: snake_case.
+  static final RegExp featureFlagPattern = RegExp(r'^[a-z][a-z0-9_]*$');
 
   static final RegExp _trailingSlashes = RegExp(r'/+$');
 
@@ -283,7 +284,7 @@ final class Env {
       if (flag.isEmpty) {
         continue;
       }
-      if (_featureFlagPattern.hasMatch(flag)) {
+      if (featureFlagPattern.hasMatch(flag)) {
         flags.add(flag);
       } else {
         errors.add(

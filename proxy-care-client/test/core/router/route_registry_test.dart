@@ -68,18 +68,14 @@ void main() {
     ], context: _context);
 
     expect(registry.routes, hasLength(6));
-    expect(
-      registry.routeNames,
-      containsAll([
-        'router.pending',
-        'router.signInRequired',
-        'router.forbidden',
-        'router.notFound',
-        'visits.list',
-        'visits.detail',
-        'profile.view',
-      ]),
-    );
+    expect(registry.routes.whereType<GoRoute>().map((route) => route.name), [
+      'router.pending',
+      'router.signInRequired',
+      'router.forbidden',
+      'router.notFound',
+      'visits.list',
+      'profile.view',
+    ]);
     expect(registry.notificationResolvers.keys, ['visits.updated']);
   });
 
@@ -135,6 +131,26 @@ void main() {
       contains('module "visits" is listed twice'),
       contains('notification type "profile.changed"'),
     ]);
+  });
+
+  test('route features must be snake_case flag names', () {
+    expect(
+      _problems([
+        _Module('visits', [
+          _route(
+            '/visits',
+            'visits.list',
+            access: const AuthenticatedAccess(feature: 'betaTools'),
+          ),
+          _route(
+            '/beta',
+            'visits.beta',
+            access: const AuthenticatedAccess(feature: 'beta_tools'),
+          ),
+        ]),
+      ]),
+      [contains('feature "betaTools" must be snake_case')],
+    );
   });
 
   test('an empty route tree is rejected', () {

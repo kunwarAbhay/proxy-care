@@ -147,7 +147,4 @@ extension RouteParameters on GoRouterState {
     }
     return value;
   }
-
-  /// The query parameter [name], or null when absent.
-  String? queryParameter(String name) => uri.queryParameters[name];
 }

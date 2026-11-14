@@ -157,8 +157,7 @@ widget, never in the router.
   it is validated by `NavigationPayload`, mapped to a location by the owning
   module's `notificationRoutes` resolver (pure, built with
   `RouteDefinition.location`), checked by `IntendedDestination.sanitize`,
-  then opened with `go`, so the guards apply. The built-in type
-  `router.openLink` opens `data.link` under the deep-link policy.
+  then opened with `go`, so the guards apply.
 
 ## Testing
 

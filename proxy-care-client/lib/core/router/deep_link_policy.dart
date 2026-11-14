@@ -9,18 +9,12 @@ import 'intended_destination.dart';
 /// [allowedHosts] once the domain is owned and verified (see
 /// docs/deep-linking.md).
 final class DeepLinkPolicy {
-  /// Creates a policy accepting links on [allowedHosts] (lowercase host
-  /// names, no port) with one of [allowedSchemes].
-  const DeepLinkPolicy({
-    this.allowedHosts = const {},
-    this.allowedSchemes = const {'https'},
-  });
+  /// Creates a policy accepting https links on [allowedHosts] (lowercase
+  /// host names, no port).
+  const DeepLinkPolicy({this.allowedHosts = const {}});
 
   /// Hosts whose links the app opens, for example `<APP_LINK_DOMAIN>`.
   final Set<String> allowedHosts;
-
-  /// Accepted URL schemes. App Links and Universal Links are always https.
-  final Set<String> allowedSchemes;
 
   /// The in-app location for [uri], or null when the app must not open it
   /// (unknown host or scheme, user info, or an unsafe path).
@@ -28,7 +22,8 @@ final class DeepLinkPolicy {
     if (!uri.hasScheme && !uri.hasAuthority) {
       return IntendedDestination.sanitize(IntendedDestination.locationOf(uri));
     }
-    if (!allowedSchemes.contains(uri.scheme.toLowerCase())) return null;
+    // App Links and Universal Links are always https.
+    if (uri.scheme.toLowerCase() != 'https') return null;
     if (!allowedHosts.contains(uri.host.toLowerCase())) return null;
     if (uri.userInfo.isNotEmpty) return null;
     return IntendedDestination.sanitize(IntendedDestination.locationOf(uri));

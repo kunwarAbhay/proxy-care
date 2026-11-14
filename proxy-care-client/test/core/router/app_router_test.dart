@@ -1,11 +1,17 @@
+import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:proxy_care_client/core/auth/authentication_state.dart';
 import 'package:proxy_care_client/core/auth/authorization/authorization.dart';
 import 'package:proxy_care_client/core/di/router_providers.dart';
+import 'package:proxy_care_client/core/router/app_router.dart';
 import 'package:proxy_care_client/core/router/deep_link_policy.dart';
 import 'package:proxy_care_client/core/router/notification_navigator.dart';
 import 'package:proxy_care_client/core/router/redirect_destinations.dart';
+import 'package:proxy_care_client/core/router/route_guards.dart';
+import 'package:proxy_care_client/core/router/route_module.dart';
 import 'package:proxy_care_client/core/router/router_options.dart';
+import 'package:proxy_care_client/core/router/router_placeholder.dart';
 
 import '../../helpers/router_harness.dart';
 
@@ -25,11 +31,12 @@ void main() {
 
       expect(harness.location, '/public');
       expect(find.text('public'), findsOneWidget);
-      final names = harness.container.read(routeRegistryProvider).routeNames;
-      expect(
-        names,
-        containsAll(['router.notFound', 'test.item', 'test.tabTwo']),
-      );
+      final names = harness.container
+          .read(routeRegistryProvider)
+          .routes
+          .whereType<GoRoute>()
+          .map((route) => route.name);
+      expect(names, containsAll(['router.notFound', 'test.home']));
       expect(
         harness.module.rootNavigatorKey,
         same(harness.container.read(rootNavigatorKeyProvider)),
@@ -37,19 +44,24 @@ void main() {
       expect(harness.router, same(harness.container.read(routerProvider)));
     });
 
-    testWidgets('rejects destinations that are not in-app locations', (
-      tester,
-    ) async {
-      await expectLater(
-        RouterHarness.pump(
-          tester,
+    test('rejects destinations that are not in-app locations', () {
+      expect(
+        () => createAppRouter(
+          registry: RouteRegistry([
+            const RouterFallbackModule(defaultRouterPlaceholder),
+          ], context: RouteBuildContext(rootNavigatorKey: GlobalKey())),
           options: const RouterOptions(
             destinations: RedirectDestinations(signIn: 'https://x.test/'),
           ),
+          authentication: () => const Unauthenticated(),
+          authorizer: const RouteAuthorizer(
+            authorization: AuthorizationService(RolePermissionPolicy.none),
+            features: FeatureFlagAccessPolicy({}),
+          ),
+          navigatorKey: GlobalKey(),
         ),
-        throwsA(anything),
+        throwsArgumentError,
       );
-      tester.takeException();
     });
   });
 
@@ -405,34 +417,6 @@ void main() {
       );
       await tester.pumpAndSettle();
       expect(harness.location, '/public');
-    });
-
-    testWidgets('openLink payloads follow the deep-link policy', (
-      tester,
-    ) async {
-      final harness = await RouterHarness.pump(
-        tester,
-        auth: signedIn(),
-        options: _signInOptions,
-      );
-      final navigator = harness.container.read(notificationNavigatorProvider);
-
-      expect(
-        navigator.open({
-          'type': NotificationNavigator.openLinkType,
-          'data': {'link': 'https://evil.example/items/1'},
-        }),
-        NotificationNavigationOutcome.unresolved,
-      );
-      expect(
-        navigator.open({
-          'type': NotificationNavigator.openLinkType,
-          'data': {'link': 'https://links.example.test/items/8'},
-        }),
-        NotificationNavigationOutcome.navigated,
-      );
-      await tester.pumpAndSettle();
-      expect(harness.location, '/items/8');
     });
   });
 }

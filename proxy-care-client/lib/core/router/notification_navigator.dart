@@ -1,6 +1,5 @@
 import 'package:go_router/go_router.dart';
 
-import 'deep_link_policy.dart';
 import 'intended_destination.dart';
 import 'navigation_payload.dart';
 
@@ -31,15 +30,7 @@ enum NotificationNavigationOutcome {
 /// the target preserved.
 final class NotificationNavigator {
   /// Creates the navigator.
-  const NotificationNavigator({
-    required this.router,
-    required this.resolvers,
-    required this.deepLinks,
-  });
-
-  /// Payload type that opens a link: `data.link` holds an in-app path or an
-  /// accepted deep-link URL.
-  static const openLinkType = 'router.openLink';
+  const NotificationNavigator({required this.router, required this.resolvers});
 
   /// The app router.
   final GoRouter router;
@@ -47,23 +38,14 @@ final class NotificationNavigator {
   /// Resolvers by payload type (from `RouteRegistry`).
   final Map<String, NotificationLocationResolver> resolvers;
 
-  /// Which links [openLinkType] payloads may open.
-  final DeepLinkPolicy deepLinks;
-
   /// Validates [rawPayload] and navigates to its location.
   NotificationNavigationOutcome open(Object? rawPayload) {
     final payload = NavigationPayload.tryParse(rawPayload);
     if (payload == null) return NotificationNavigationOutcome.invalidPayload;
 
-    final String? location;
-    if (payload.type == openLinkType) {
-      final link = Uri.tryParse(payload.data['link'] ?? '');
-      location = link == null ? null : deepLinks.resolve(link);
-    } else {
-      final resolver = resolvers[payload.type];
-      if (resolver == null) return NotificationNavigationOutcome.unknownType;
-      location = IntendedDestination.sanitize(resolver(payload));
-    }
+    final resolver = resolvers[payload.type];
+    if (resolver == null) return NotificationNavigationOutcome.unknownType;
+    final location = IntendedDestination.sanitize(resolver(payload));
     if (location == null) return NotificationNavigationOutcome.unresolved;
 
     router.go(location);
