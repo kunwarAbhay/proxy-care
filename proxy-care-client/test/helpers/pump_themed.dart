@@ -15,6 +15,7 @@ Future<void> pumpThemed(
   return tester.pumpWidget(
     MaterialApp(
       theme: buildProxyCareTheme(density),
+      themeAnimationDuration: Duration.zero,
       home: Scaffold(
         body: Center(
           child: Padding(padding: const EdgeInsets.all(16), child: child),

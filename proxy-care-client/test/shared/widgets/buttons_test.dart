@@ -197,7 +197,10 @@ void main() {
           variant: PcIconButtonVariant.info,
         ),
       );
-      expect(tester.getSize(find.byType(IconButton)), const Size.square(44));
+      final button = tester.widget<IconButton>(find.byType(IconButton));
+      expect(button.style!.fixedSize!.resolve({}), const Size.square(44));
+      // The padded tap target keeps 48px around the 44px button.
+      expect(tester.getSize(find.byType(IconButton)), const Size.square(48));
       expect(tester.getSize(find.byType(PcIcon)), const Size.square(20));
     });
   });

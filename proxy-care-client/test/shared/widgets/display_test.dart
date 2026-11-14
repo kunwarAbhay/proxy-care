@@ -45,11 +45,11 @@ void main() {
       expect(
         tester.getTopLeft(find.text('Ongoing visit')) -
             tester.getTopLeft(find.byType(PcCard)),
-        const Offset(16, 16),
+        const Offset(17, 17),
       );
     });
 
-    testWidgets('attention card has a 2px warning border, padding kept', (
+    testWidgets('attention card has a 2px warning border; content stays', (
       tester,
     ) async {
       await pumpThemed(
@@ -71,7 +71,7 @@ void main() {
       expect(
         tester.getTopLeft(find.text("Attach the hospital's bill")) -
             tester.getTopLeft(find.byType(PcCard)),
-        const Offset(15, 15),
+        const Offset(17, 17),
       );
     });
 

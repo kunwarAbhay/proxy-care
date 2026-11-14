@@ -45,9 +45,6 @@ final class _SelectionStyle {
   final Color border;
   final double borderWidth;
   final Color accent;
-
-  /// Padding shrinks by the extra border width so content doesn't shift.
-  double get inset => borderWidth - PcBorders.thin;
 }
 
 Widget _selectionSurface(
@@ -71,8 +68,11 @@ Widget _selectionSurface(
         onTap: onTap,
         customBorder: shape,
         overlayColor: pcStateLayer(context.pc.colors.text),
+        // CSS puts the border outside the padding (and drops the padding by
+        // 1px for a 2px border); a Flutter shape paints it inside, so the
+        // padding adds the 1px base border and content never moves.
         child: Padding(
-          padding: padding - EdgeInsets.all(style.inset),
+          padding: padding + const EdgeInsets.all(PcBorders.thin),
           child: child,
         ),
       ),

@@ -141,3 +141,4 @@ what the right-hand column says, and nothing else is assumed.
 | A33 | System navigation bar (Android) | Not specified | Only the icon brightness is set (dark); the color is left to the platform. |
 | A34 | Motion | No durations or curves in the spec | Components change state without custom animations (framework defaults only). |
 | A35 | "Still open" items in the Decisions log (badge wrap on H-CArrive, C-Review button order, 22px call icons, large pickup code) | Open design calls | Not encoded: they are screen-level. `PcIconButton` always uses the specified 24px icon. |
+| A36 | Section 4: "When a border goes 1px → 2px on select/focus, padding drops by 1px so content doesn't shift" | This is CSS's box model (border outside the padding). Flutter shapes paint their border inside the box. | Card and selection-card padding is the spec padding plus the 1px base border, at every border width. Content sits exactly where the CSS puts it and never moves. |

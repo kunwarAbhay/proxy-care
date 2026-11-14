@@ -70,8 +70,12 @@ class PcCard extends StatelessWidget {
   }
 }
 
-/// Paints a `radius-xl` card surface with 16px padding, reduced by any
-/// border wider than 1px so content does not shift.
+/// Paints a `radius-xl` card surface with 16px padding.
+///
+/// The spec's CSS puts the border outside the padding and drops the padding
+/// by 1px when the border goes to 2px, so content always sits 17px in. A
+/// Flutter shape paints its border inside the box, so the padding here is
+/// the 16px plus the 1px base border, whatever the border width.
 Widget pcCardSurface(
   BuildContext context, {
   required Color fill,
@@ -83,9 +87,8 @@ Widget pcCardSurface(
     borderRadius: const BorderRadius.all(Radius.circular(PcRadii.xl)),
     side: side,
   );
-  final extra = side.width > PcBorders.thin ? side.width - PcBorders.thin : 0.0;
   final padded = Padding(
-    padding: EdgeInsets.all(PcSpacing.space4 - extra),
+    padding: const EdgeInsets.all(PcSpacing.space4 + PcBorders.thin),
     child: child,
   );
   final surface = Material(

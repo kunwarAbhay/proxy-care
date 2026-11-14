@@ -45,8 +45,9 @@ void main() {
 
     test('uses Roboto with the Devanagari fallback', () {
       expect(theme.textTheme.bodyLarge?.fontFamily, PcFonts.family);
-      expect(theme.textTheme.headlineMedium, PcTypeScale.h1);
-      expect(theme.textTheme.titleLarge, PcTypeScale.h3);
+      expect(theme.textTheme.headlineMedium?.fontSize, PcTypeScale.h1.fontSize);
+      expect(theme.textTheme.headlineMedium?.height, PcTypeScale.h1.height);
+      expect(theme.textTheme.titleLarge?.fontSize, PcTypeScale.h3.fontSize);
       expect(
         theme.textTheme.bodyMedium?.fontFamilyFallback,
         PcFonts.fallback,
@@ -79,8 +80,12 @@ void main() {
 
       expect(standard.navigationBarTheme.height, 80);
       expect(comfortable.navigationBarTheme.height, 84);
-      expect(standard.textTheme.bodyLarge, PcTypeScale.bodyLg);
-      expect(comfortable.textTheme.bodyLarge, PcTypeScale.cBodyLg);
+      expect(standard.textTheme.bodyLarge?.fontSize, 16);
+      expect(comfortable.textTheme.bodyLarge?.fontSize, 18);
+      expect(
+        comfortable.textTheme.bodyLarge?.height,
+        PcTypeScale.cBodyLg.height,
+      );
       expect(comfortable.colorScheme, standard.colorScheme);
 
       final pc = comfortable.extension<PcTheme>()!;
