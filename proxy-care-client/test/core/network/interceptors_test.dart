@@ -367,8 +367,10 @@ void main() {
       );
 
       final line = harness.logs.single;
-      expect(line, startsWith('GET /v1/patients → 200 in '));
-      expect(line, matches(RegExp(r'in \d+ ms')));
+      expect(
+        line,
+        matches(RegExp(r'^GET /v1/patients \[[0-9a-f-]{36}\] → 200 in \d+ ms$')),
+      );
       for (final secret in ['secret-token', 'Kamla', 'api.proxycare']) {
         expect(line, isNot(contains(secret)), reason: secret);
       }
