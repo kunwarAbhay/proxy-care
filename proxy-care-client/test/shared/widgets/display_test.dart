@@ -269,7 +269,10 @@ void main() {
         tester,
         const Row(
           mainAxisSize: MainAxisSize.min,
-          children: [PcTag(label: 'Fixed price'), PcCountBadge(count: 3)],
+          children: [
+            PcTag(label: 'Fixed price'),
+            PcCountBadge(count: 3),
+          ],
         ),
       );
       expect(tester.getSize(find.byType(PcTag)).height, 24);

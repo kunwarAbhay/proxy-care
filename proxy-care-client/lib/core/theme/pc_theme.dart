@@ -70,6 +70,5 @@ extension PcThemeContext on BuildContext {
   /// The [PcTheme] of the nearest `Theme`, or the standard light theme when
   /// the app theme was not built with `buildProxyCareTheme`.
   PcTheme get pc =>
-      Theme.of(this).extension<PcTheme>() ??
-      PcTheme.light(AppDensity.standard);
+      Theme.of(this).extension<PcTheme>() ?? PcTheme.light(AppDensity.standard);
 }
