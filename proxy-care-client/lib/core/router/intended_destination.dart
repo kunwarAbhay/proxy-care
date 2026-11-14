@@ -23,7 +23,9 @@ abstract final class IntendedDestination {
     }
     // Checked on the raw text: Uri.parse would silently resolve `..`.
     final rawPath = raw.split(RegExp('[?#]')).first;
-    if (rawPath.split('/').any((segment) => segment == '.' || segment == '..')) {
+    if (rawPath
+        .split('/')
+        .any((segment) => segment == '.' || segment == '..')) {
       return null;
     }
     final uri = Uri.tryParse(raw);
