@@ -31,6 +31,7 @@ starts, validates its configuration and renders nothing.
 | `json_annotation` | ^4.12.0 | Annotations for JSON serialization |
 | `logger` | ^2.8.0 | Logging |
 | `intl` | ^0.20.3 | Dates, numbers and currency formatting |
+| `material_ui` | ^1.11.0 | Material widgets; Flutter 3.50 deprecates `package:flutter/material.dart` in favour of this package |
 
 Development:
 
@@ -120,7 +121,7 @@ Output goes to `build/web/`.
 | Command | What it does |
 | --- | --- |
 | `make get` | `flutter pub get` |
-| `make gen` | `dart run build_runner build --delete-conflicting-outputs` |
+| `make gen` | `dart run build_runner build` |
 | `make format` | `dart format lib test tool` |
 | `make format-check` | Fails if any file is not formatted |
 | `make analyze` | `flutter analyze` with the strict settings in `analysis_options.yaml` |

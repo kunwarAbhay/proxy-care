@@ -24,7 +24,7 @@ get:
 	$(FLUTTER) pub get
 
 gen:
-	$(DART) run build_runner build --delete-conflicting-outputs
+	$(DART) run build_runner build
 
 format:
 	$(DART) format $(DART_SOURCES)
