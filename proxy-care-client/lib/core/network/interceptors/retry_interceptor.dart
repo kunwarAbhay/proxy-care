@@ -4,6 +4,7 @@ import 'package:dio/dio.dart';
 
 import '../network_config.dart';
 import '../request_options.dart';
+import '../request_replay.dart';
 
 /// Waits for [delay]; injectable so tests do not sleep.
 typedef RetryDelay = Future<void> Function(Duration delay);
@@ -14,10 +15,13 @@ typedef RetryDelay = Future<void> Function(Duration delay);
 /// error or connection timeout, or with HTTP **502, 503 or 504**. Up to
 /// [maxRetries] retries, with exponential backoff ([baseDelay], doubling).
 ///
-/// Never retried: cancelled requests, other methods (POST, PUT, PATCH,
-/// DELETE are not idempotent by default), and requests whose
-/// `RetryPolicy` is disabled. A request with `RetryPolicy(enabled: true)`
-/// is retried whatever its method (use it only with an idempotency key).
+/// Never retried: cancelled requests, 401 and 403 (and every other status),
+/// other methods (POST, PUT, PATCH, DELETE are not idempotent by default),
+/// requests whose body cannot be sent twice, and requests whose
+/// `RetryPolicy` is disabled. Authentication recovery is
+/// `AuthInterceptor`'s job, never a retry. A request with
+/// `RetryPolicy(enabled: true)` is retried whatever its method (use it only
+/// with an idempotency key).
 ///
 /// The retry loop lives in the first chain that sees the failure. Each
 /// retry is dispatched through the whole chain again (so it gets a fresh
@@ -69,8 +73,8 @@ final class RetryInterceptor extends Interceptor {
       await _delay(backoff(retry));
       options.extra[RequestExtra.isRetry] = true;
       options.extra[RequestExtra.retryCount] = retry;
-      // A multipart body can be sent once; each retry needs a fresh copy.
-      if (options.data case final FormData form) options.data = form.clone();
+      // A body that cannot be sent twice ends the loop with the last error.
+      if (!prepareForReplay(options)) break;
       try {
         final response = await dio.fetch<Object?>(options);
         options.extra.remove(RequestExtra.isRetry);

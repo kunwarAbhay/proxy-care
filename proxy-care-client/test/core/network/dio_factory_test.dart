@@ -2,7 +2,9 @@ import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:proxy_care_client/core/di/network_providers.dart';
 import 'package:proxy_care_client/core/network/api_client.dart';
-import 'package:proxy_care_client/core/network/authentication_session.dart';
+import 'package:proxy_care_client/core/auth/authentication_session.dart';
+import 'package:proxy_care_client/core/di/auth_providers.dart';
+import 'package:proxy_care_client/core/network/access_token_provider.dart';
 import 'package:proxy_care_client/core/network/dio_api_client.dart';
 import 'package:proxy_care_client/core/network/dio_factory.dart';
 import 'package:proxy_care_client/core/network/interceptors/auth_interceptor.dart';
@@ -102,7 +104,7 @@ void main() {
     test('the factory installs correlation, logging, auth, retry', () {
       final dio = DioFactory(
         baseUrl: Uri.parse('https://api.proxycare.test'),
-        session: const SignedOutSession(),
+        tokens: const NoAccessTokenProvider(),
         log: (_) {},
       ).create();
 
@@ -120,7 +122,7 @@ void main() {
       'the request reaches the adapter with ID and token attached',
       () async {
         final harness = NetworkHarness(
-          session: FakeSession(token: 'access-1'),
+          tokens: FakeTokens(token: 'access-1'),
           responses: [respondJson(successEnvelope(null))],
         );
 
@@ -135,7 +137,7 @@ void main() {
 
     test('logging records the 401 before auth recovers from it', () async {
       final harness = NetworkHarness(
-        session: FakeSession(token: 'old', refreshedToken: 'new'),
+        tokens: FakeTokens(token: 'old', recovered: 'new'),
         responses: [
           respondJson(errorEnvelope('UNAUTHENTICATED'), status: 401),
           respondJson(successEnvelope(null)),
@@ -183,12 +185,14 @@ void main() {
       env: testEnv(apiBaseUrl: 'https://api.proxycare.test'),
     );
 
+    // Without Supabase settings, authentication is unconfigured.
+    expect(await container.read(supabaseAuthClientProvider.future), isNull);
     final dio = container.read(dioProvider);
     expect(dio.options.baseUrl, 'https://api.proxycare.test');
     expect(container.read(apiClientProvider), isA<DioApiClient>());
     expect(
       container.read(authenticationSessionProvider),
-      isA<SignedOutSession>(),
+      isA<UnconfiguredAuthenticationSession>(),
     );
   });
 }

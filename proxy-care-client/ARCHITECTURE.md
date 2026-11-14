@@ -74,13 +74,15 @@ lib/
 │   ├── config/              Env: compile-time configuration and validation
 │   ├── constants/           Feature-agnostic constants, one file per topic
 │   ├── di/                  Core providers, root container, bootstrap
+│   ├── auth/                Authentication session and state, Supabase
+│   │                        adapter, authorization, biometric gate
 │   ├── error/               Exceptions, failures, error mapper, repository
 │   │                        guard, crash reporter, global error handlers
 │   ├── l10n/                ARB strings, generated localizations, error
 │   │                        messages
 │   ├── network/             Dio client, interceptors, network errors
 │   ├── router/              GoRouter set-up
-│   ├── security/            Secure storage and tokens
+│   ├── security/            Secure key-value storage
 │   ├── services/            Other cross-cutting services
 │   ├── theme/               Design-system tokens, breakpoints, ThemeData
 │   ├── utils/               Pure helpers
@@ -135,7 +137,8 @@ locator and no global mutable singleton.
 | Providers | File |
 | --- | --- |
 | Infrastructure (env, logger, error reporter, crash reporter, error mapper; later storage, router) | `core/di/core_providers.dart` |
-| Networking (authentication session, Dio, API client) | `core/di/network_providers.dart` |
+| Networking (Dio, API client) | `core/di/network_providers.dart` |
+| Authentication (Supabase, session, state, authorization) | `core/di/auth_providers.dart` |
 | A feature's data sources, repositories and use cases | `features/<feature>/<feature>_providers.dart` |
 | A feature's controllers | Next to the controller in `presentation/controllers/` |
 | Root overrides | `core/di/app_container.dart` (`createAppContainer`) |
@@ -421,6 +424,30 @@ a crash-reporting service.
   throws renders as empty space, without exception text or stack trace; the
   error is still reported. Debug builds keep the framework's error widget.
 
+## Authentication
+
+Supabase Auth is the identity provider; details in
+[AUTHENTICATION.md](AUTHENTICATION.md) and [SECURITY.md](SECURITY.md).
+
+| Layer | Pieces | May use |
+| --- | --- | --- |
+| `core/auth` | `AuthenticationSession`, `AuthenticationState`, `SessionTokenRecovery`, authorization, `BiometricGate` | `core/network` abstractions |
+| `core/auth/supabase` | `SupabaseAuthenticationSession`, secure `LocalStorage` / PKCE storage, `initializeSupabase` | Supabase SDK |
+| `core/security` | `SecureKeyValueStore` | `flutter_secure_storage` |
+| `core/network` | `AccessTokenProvider`, `UnauthorizedRecovery` | nothing from `core/auth` |
+| `core/di/auth_providers.dart` | `supabaseAuthClientProvider`, `authenticationSessionProvider`, `authenticationStateProvider`, `sessionTokenRecoveryProvider`, `authorizationServiceProvider`, `biometricGateProvider` | everything above |
+
+The Supabase SDK owns the token lifecycle (rotation, automatic refresh,
+concurrent-refresh de-duplication, lifecycle pause and resume, session
+persistence through our secure storage). The app maps its events to
+`AuthenticationState` in one place (`SupabaseAuthenticationSession`) and
+exposes them through `authenticationStateProvider`, whose subscription is
+cancelled when the provider is disposed. Supabase is initialized once, by
+`supabaseAuthClientProvider`, awaited in `bootstrap()`. Domain and
+presentation see only `AuthenticationState` (pure Dart) and, where needed,
+`AuthenticationSession`; architecture tests keep the SDK and secure storage
+packages inside their folders.
+
 ## Networking
 
 All HTTP goes through `ApiClient` (`apiClientProvider`), used only by data
@@ -455,7 +482,7 @@ were added (checked against Dio's source and by `dio_factory_test.dart`):
 | 0 | `ImplyContentTypeInterceptor` (Dio) | content type | — |
 | 1 | `CorrelationIdInterceptor` | sets `X-Correlation-Id` (kept across retries) | — |
 | 2 | `LoggingInterceptor` | starts the timer | one line per attempt, including the 401 before a refresh |
-| 3 | `AuthInterceptor` | attaches `Authorization: Bearer` (unless `skipAuth`) | 401: refresh through `AuthenticationSession`, repeat once |
+| 3 | `AuthInterceptor` | attaches `Authorization: Bearer` from `AccessTokenProvider` (not for `skipAuth`, public endpoints or other origins) | 401: token from `UnauthorizedRecovery` (newer or refreshed), replay once |
 | 4 | `RetryInterceptor` | — | transient failures: retry with backoff |
 
 A repeat (3) or retry (4) runs through the whole chain again, so it gets a

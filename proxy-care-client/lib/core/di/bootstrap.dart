@@ -6,6 +6,7 @@ import '../error/error_widget_builder.dart';
 import '../error/global_error_handlers.dart';
 import '../theme/font_licenses.dart';
 import 'app_container.dart';
+import 'auth_providers.dart';
 import 'core_providers.dart';
 
 /// Prepares everything the app needs before the first frame and returns the
@@ -19,12 +20,11 @@ import 'core_providers.dart';
 /// 4. Route uncaught framework and platform errors to the `ErrorReporter`,
 ///    and keep error details out of failed widgets outside debug builds.
 /// 5. Register the bundled fonts' licences.
+/// 6. Initialize Supabase Auth with secure storage and restore the session.
 ///
 /// Run it inside `runGuardedZone` (see `main.dart`) so the binding and the
 /// app share the zone that catches asynchronous errors.
 ///
-/// Asynchronous infrastructure set-up (for example restoring a session from
-/// secure storage) is added here as a later step.
 Future<ProviderContainer> bootstrap() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -34,6 +34,11 @@ Future<ProviderContainer> bootstrap() async {
   installGlobalErrorHandlers(container.read(errorReporterProvider));
   installErrorWidgetBuilder();
   registerFontLicenses();
+
+  // Supabase is initialized here, once, with secure session storage; the
+  // SDK restores the persisted session while initializing.
+  await container.read(supabaseAuthClientProvider.future);
+  await container.read(authenticationSessionProvider).restoreSession();
 
   return container;
 }

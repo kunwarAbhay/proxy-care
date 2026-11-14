@@ -1,30 +1,56 @@
 import 'package:dio/dio.dart';
 
-import '../authentication_session.dart';
+import '../access_token_provider.dart';
 import '../network_config.dart';
+import '../public_endpoints.dart';
 import '../request_options.dart';
+import '../request_replay.dart';
 
-/// Attaches the access token and recovers from an expired one.
+/// Attaches the access token to Spring Boot API requests and recovers once
+/// from a 401.
 ///
-/// * Request: adds `Authorization: Bearer <token>` when the session has a
-///   token, unless the request was sent with `skipAuth`.
-/// * 401 response: asks the session to refresh and, if it returns a new
-///   token, repeats the request once with it. If refreshing fails, the 401
-///   continues and becomes `UnauthorizedException`.
+/// Request phase: adds `Authorization: Bearer <token>` from
+/// [AccessTokenProvider] when there is a token, unless
+/// * the request has `skipAuth` or its path is in [publicEndpoints], or
+/// * the request goes to a different origin than [apiBaseUrl] (a token is
+///   never sent to a third party).
 ///
-/// Recursion is impossible: refresh calls are sent with `skipAuth` (never
-/// intercepted), and a repeated request is marked so a second 401 is not
-/// refreshed again. Sharing one refresh between concurrent 401s is the
-/// session's responsibility (authentication milestone).
+/// Error phase, on a 401 to a request that carried a token: asks
+/// [UnauthorizedRecovery] for a better token (a newer one the identity
+/// provider already obtained, or a refreshed one) and replays the request
+/// once with it. The replay is marked, so a second 401 is final; it goes
+/// through the whole chain again, so it gets the newest token. A body that
+/// cannot be sent twice (a consumed stream) is not replayed: the original
+/// 401 stands.
+///
+/// It never refreshes, stores or decodes tokens itself, and never calls the
+/// identity provider's SDK: the abstractions are implemented in
+/// `core/auth`. Requests made by the Supabase SDK use the SDK's own HTTP
+/// client and never pass through this interceptor.
 final class AuthInterceptor extends Interceptor {
-  /// Creates the interceptor. [dio] repeats requests after a refresh.
-  AuthInterceptor({required this.session, required this.dio});
+  /// Creates the interceptor. [dio] replays requests.
+  AuthInterceptor({
+    required this.tokens,
+    required this.dio,
+    required this.apiBaseUrl,
+    this.recovery,
+    this.publicEndpoints = const PublicEndpoints(),
+  });
 
-  /// Supplies and refreshes tokens.
-  final AuthenticationSession session;
+  /// Source of the current access token.
+  final AccessTokenProvider tokens;
 
-  /// Repeats requests after a refresh.
+  /// Obtains a token after a 401; null disables recovery.
+  final UnauthorizedRecovery? recovery;
+
+  /// Replays requests.
   final Dio dio;
+
+  /// The API's base URL: only requests to its origin get a token.
+  final Uri apiBaseUrl;
+
+  /// Paths that never get a token.
+  final PublicEndpoints publicEndpoints;
 
   static const String _bearer = 'Bearer ';
 
@@ -33,14 +59,30 @@ final class AuthInterceptor extends Interceptor {
     RequestOptions options,
     RequestInterceptorHandler handler,
   ) async {
-    if (options.extra[RequestExtra.skipAuth] == true) {
+    if (!_needsToken(options)) {
       options.headers.remove(ApiHeaders.authorization);
       handler.next(options);
       return;
     }
-    final token = await session.accessToken();
+    final String? token;
+    try {
+      token = await tokens.getAccessToken();
+    } on Object catch (error, stackTrace) {
+      handler.reject(
+        DioException(
+          requestOptions: options,
+          error: error,
+          stackTrace: stackTrace,
+          message: 'Could not read the access token.',
+        ),
+      );
+      return;
+    }
     if (token != null && token.isNotEmpty) {
       options.headers[ApiHeaders.authorization] = '$_bearer$token';
+    } else {
+      // Missing token: send the request without one; the API decides.
+      options.headers.remove(ApiHeaders.authorization);
     }
     handler.next(options);
   }
@@ -51,42 +93,61 @@ final class AuthInterceptor extends Interceptor {
     ErrorInterceptorHandler handler,
   ) async {
     final options = err.requestOptions;
-    final shouldRefresh =
+    final rejected = _sentToken(options);
+    final recovery = this.recovery;
+    final eligible =
         err.response?.statusCode == 401 &&
-        options.extra[RequestExtra.skipAuth] != true &&
-        options.extra[RequestExtra.authRetried] != true;
-    if (!shouldRefresh) {
+        recovery != null &&
+        rejected != null &&
+        options.extra[RequestExtra.authRetried] != true &&
+        _needsToken(options);
+    if (!eligible) {
       handler.next(err);
       return;
     }
-
-    final sent = options.headers[ApiHeaders.authorization] as String?;
-    final rejected = sent != null && sent.startsWith(_bearer)
-        ? sent.substring(_bearer.length)
-        : null;
 
     final String? token;
     try {
-      token = await session.refreshAccessToken(rejectedToken: rejected);
+      token = await recovery.recoverAccessToken(rejectedToken: rejected);
     } on Object {
-      // A failed refresh leaves the original 401 as the outcome.
+      // Recovery failed; the session layer has already updated the
+      // authentication state. The original 401 stands.
       handler.next(err);
       return;
     }
-    if (token == null || token.isEmpty) {
+    if (token == null || token.isEmpty || token == rejected) {
+      handler.next(err);
+      return;
+    }
+    if (!prepareForReplay(options)) {
       handler.next(err);
       return;
     }
 
     options.extra[RequestExtra.authRetried] = true;
-    // A multipart body can be sent once; the repeat needs a fresh copy.
-    if (options.data case final FormData form) options.data = form.clone();
     try {
-      // The repeat runs the whole chain again; this interceptor attaches
-      // the new token from the session.
+      // The replay runs the whole chain; onRequest attaches the newest
+      // token from the provider.
       handler.resolve(await dio.fetch<Object?>(options));
-    } on DioException catch (repeatError) {
-      handler.next(repeatError);
+    } on DioException catch (replayError) {
+      handler.next(replayError);
     }
+  }
+
+  bool _needsToken(RequestOptions options) =>
+      options.extra[RequestExtra.skipAuth] != true &&
+      !publicEndpoints.contains(options.uri.path) &&
+      _sameOrigin(options.uri);
+
+  bool _sameOrigin(Uri uri) =>
+      uri.scheme == apiBaseUrl.scheme &&
+      uri.host == apiBaseUrl.host &&
+      uri.port == apiBaseUrl.port;
+
+  static String? _sentToken(RequestOptions options) {
+    final header = options.headers[ApiHeaders.authorization];
+    return header is String && header.startsWith(_bearer)
+        ? header.substring(_bearer.length)
+        : null;
   }
 }

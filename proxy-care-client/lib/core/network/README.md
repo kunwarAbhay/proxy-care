@@ -15,8 +15,10 @@ The HTTP layer, built on Dio. See ARCHITECTURE.md, "Networking".
   and raw responses.
 - `request_options.dart`: per-request headers, timeouts, cancellation,
   retry policy, idempotency key, `skipAuth`.
-- `authentication_session.dart`: the token source the auth interceptor
-  uses (`SignedOutSession` until the authentication milestone).
+- `access_token_provider.dart`: `AccessTokenProvider` and
+  `UnauthorizedRecovery`, the only authentication abstractions the
+  interceptor knows (implemented in `core/auth`); `public_endpoints.dart`;
+  `request_replay.dart` (which bodies may be sent twice).
 - `pagination.dart`, `transfer.dart`, `idempotency_key.dart`,
   `network_config.dart`.
 

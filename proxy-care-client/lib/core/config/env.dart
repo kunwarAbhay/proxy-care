@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'app_environment.dart';
 import 'env_exception.dart';
 
@@ -16,6 +18,8 @@ final class Env {
     required this.appName,
     required this.enableLogging,
     required this.featureFlags,
+    this.supabaseUrl,
+    this.supabasePublishableKey,
   });
 
   /// Reads the compile-time defines and validates them.
@@ -28,6 +32,10 @@ final class Env {
       appName: const String.fromEnvironment(appNameKey),
       enableLogging: const String.fromEnvironment(enableLoggingKey),
       featureFlags: const String.fromEnvironment(featureFlagsKey),
+      supabaseUrl: const String.fromEnvironment(supabaseUrlKey),
+      supabasePublishableKey: const String.fromEnvironment(
+        supabasePublishableKeyKey,
+      ),
       requireExplicitEnvironment: isReleaseBuild,
     );
   }
@@ -50,6 +58,12 @@ final class Env {
 
   /// Name of the define that lists enabled feature flags.
   static const featureFlagsKey = 'FEATURE_FLAGS';
+
+  /// Name of the define that holds the Supabase project URL.
+  static const supabaseUrlKey = 'SUPABASE_URL';
+
+  /// Name of the define that holds the Supabase publishable key.
+  static const supabasePublishableKeyKey = 'SUPABASE_PUBLISHABLE_KEY';
 
   /// API base URL used only when the environment is development and
   /// `API_BASE_URL` is not supplied. Staging and production never fall back.
@@ -85,6 +99,18 @@ final class Env {
   /// Names of the feature flags switched on for this build. Unmodifiable.
   final Set<String> featureFlags;
 
+  /// Supabase project URL (Auth), without a trailing slash; null when
+  /// authentication is not configured (development only).
+  final Uri? supabaseUrl;
+
+  /// Supabase publishable key (`sb_publishable_…`, or a legacy anon key).
+  /// Safe to ship in the app; never a secret or service-role key.
+  final String? supabasePublishableKey;
+
+  /// Whether Supabase Auth is configured.
+  bool get isAuthConfigured =>
+      supabaseUrl != null && supabasePublishableKey != null;
+
   /// Whether this is a production build.
   bool get isProduction => environment == AppEnvironment.production;
 
@@ -110,12 +136,20 @@ final class Env {
   /// * `ENABLE_LOGGING`: `true` or `false`; defaults to `false` in
   ///   production and `true` elsewhere.
   /// * `FEATURE_FLAGS`: comma-separated snake_case names; defaults to none.
+  /// * `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY`: both or neither.
+  ///   Required in staging and production, where the URL must use https;
+  ///   optional in development (the app then runs signed out). The key must
+  ///   be a publishable (or legacy anon) key: secret (`sb_secret_…`) and
+  ///   service-role keys are rejected, because they bypass Row Level
+  ///   Security and must never ship in an app.
   static Env parse({
     required String appEnv,
     required String apiBaseUrl,
     required String appName,
     required String enableLogging,
     required String featureFlags,
+    String supabaseUrl = '',
+    String supabasePublishableKey = '',
     bool requireExplicitEnvironment = false,
   }) {
     final errors = <String>[];
@@ -131,6 +165,12 @@ final class Env {
     final baseUrl = _parseApiBaseUrl(apiBaseUrl, rules, errors);
     final logging = _parseLogging(enableLogging, rules, errors);
     final flags = _parseFeatureFlags(featureFlags, errors);
+    final (supabase, supabaseKey) = _parseSupabase(
+      supabaseUrl,
+      supabasePublishableKey,
+      rules,
+      errors,
+    );
 
     if (errors.isNotEmpty) {
       throw EnvConfigException(List.unmodifiable(errors));
@@ -143,6 +183,8 @@ final class Env {
       appName: _parseAppName(appName),
       enableLogging: logging!,
       featureFlags: flags,
+      supabaseUrl: supabase,
+      supabasePublishableKey: supabaseKey,
     );
   }
 
@@ -252,6 +294,77 @@ final class Env {
     return Set.unmodifiable(flags);
   }
 
+  static (Uri?, String?) _parseSupabase(
+    String rawUrl,
+    String rawKey,
+    AppEnvironment environment,
+    List<String> errors,
+  ) {
+    final urlText = rawUrl.trim();
+    final key = rawKey.trim();
+    final isDevelopment = environment == AppEnvironment.development;
+
+    if (urlText.isEmpty && key.isEmpty) {
+      if (!isDevelopment) {
+        errors.add(
+          '$supabaseUrlKey and $supabasePublishableKeyKey are required when '
+          '$appEnvKey is ${environment.name}.',
+        );
+      }
+      return (null, null);
+    }
+    if (urlText.isEmpty || key.isEmpty) {
+      errors.add(
+        'Set both $supabaseUrlKey and $supabasePublishableKeyKey, or neither.',
+      );
+      return (null, null);
+    }
+
+    final url = Uri.tryParse(urlText);
+    final validUrl =
+        url != null &&
+        url.hasScheme &&
+        url.host.isNotEmpty &&
+        (url.scheme == 'https' || (isDevelopment && url.scheme == 'http')) &&
+        !url.hasQuery &&
+        !url.hasFragment;
+    if (!validUrl) {
+      errors.add(
+        isDevelopment
+            ? '$supabaseUrlKey must be an http(s) URL without query or '
+                  'fragment.'
+            : '$supabaseUrlKey must be an https URL without query or '
+                  'fragment.',
+      );
+    }
+
+    if (_isSecretKey(key)) {
+      errors.add(
+        '$supabasePublishableKeyKey must be a publishable key; secret and '
+        'service-role keys must never be included in the app.',
+      );
+    }
+
+    if (!validUrl || url == null || _isSecretKey(key)) return (null, null);
+    return (url.replace(path: url.path.replaceAll(_trailingSlashes, '')), key);
+  }
+
+  /// Whether [key] is a Supabase secret key or a legacy service-role JWT.
+  static bool _isSecretKey(String key) {
+    if (key.startsWith('sb_secret_')) return true;
+    final parts = key.split('.');
+    if (parts.length != 3) return false;
+    try {
+      final payload = utf8.decode(
+        base64Url.decode(base64Url.normalize(parts[1])),
+      );
+      final Object? claims = jsonDecode(payload);
+      return claims is Map<String, Object?> && claims['role'] == 'service_role';
+    } on FormatException {
+      return false;
+    }
+  }
+
   @override
   bool operator ==(Object other) {
     return other is Env &&
@@ -260,7 +373,9 @@ final class Env {
         other.appName == appName &&
         other.enableLogging == enableLogging &&
         other.featureFlags.length == featureFlags.length &&
-        other.featureFlags.containsAll(featureFlags);
+        other.featureFlags.containsAll(featureFlags) &&
+        other.supabaseUrl == supabaseUrl &&
+        other.supabasePublishableKey == supabasePublishableKey;
   }
 
   @override
@@ -271,6 +386,8 @@ final class Env {
       appName,
       enableLogging,
       Object.hashAllUnordered(featureFlags),
+      supabaseUrl,
+      supabasePublishableKey,
     );
   }
 
@@ -278,6 +395,6 @@ final class Env {
   String toString() {
     return 'Env(environment: ${environment.name}, apiBaseUrl: $apiBaseUrl, '
         'appName: $appName, enableLogging: $enableLogging, '
-        'featureFlags: $featureFlags)';
+        'featureFlags: $featureFlags, supabaseUrl: $supabaseUrl)';
   }
 }

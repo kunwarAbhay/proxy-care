@@ -1,10 +1,15 @@
+import 'dart:typed_data';
+
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:proxy_care_client/core/error/app_exception.dart';
 import 'package:proxy_care_client/core/network/api_client.dart';
 import 'package:proxy_care_client/core/network/interceptors/log_redactor.dart';
 import 'package:proxy_care_client/core/network/interceptors/logging_interceptor.dart';
+import 'package:proxy_care_client/core/network/public_endpoints.dart';
 import 'package:proxy_care_client/core/network/request_options.dart';
+import 'package:proxy_care_client/core/network/request_replay.dart';
+import 'package:proxy_care_client/core/network/transfer.dart';
 
 import '../../helpers/fake_http_adapter.dart';
 import '../../helpers/network_harness.dart';
@@ -18,7 +23,7 @@ void main() {
   group('AuthInterceptor', () {
     test('attaches the bearer token', () async {
       final harness = NetworkHarness(
-        session: FakeSession(token: 'access-1'),
+        tokens: FakeTokens(token: 'access-1'),
         responses: [_ok()],
       );
 
@@ -30,10 +35,10 @@ void main() {
       );
     });
 
-    test('sends no header when signed out', () async {
+    test('sends no header when there is no token', () async {
       final harness = NetworkHarness(responses: [_ok()]);
 
-      await harness.client.get('/v1/public', decode: ignoreBody);
+      await harness.client.get('/v1/me', decode: ignoreBody);
 
       expect(
         harness.adapter.requests.single.headers.containsKey('Authorization'),
@@ -43,12 +48,12 @@ void main() {
 
     test('skipAuth sends no token, even a caller-supplied one', () async {
       final harness = NetworkHarness(
-        session: FakeSession(token: 'access-1'),
+        tokens: FakeTokens(token: 'access-1'),
         responses: [_ok()],
       );
 
       await harness.client.post(
-        '/v1/auth/refresh',
+        '/v1/anything',
         decode: ignoreBody,
         options: const ApiRequestOptions(
           skipAuth: true,
@@ -62,29 +67,87 @@ void main() {
       );
     });
 
-    test('a 401 refreshes once and repeats with the new token', () async {
-      final session = FakeSession(token: 'old', refreshedToken: 'new');
+    test('configured public endpoints get no token', () async {
       final harness = NetworkHarness(
-        session: session,
+        tokens: FakeTokens(token: 'access-1'),
+        publicEndpoints: const PublicEndpoints(['/v1/status', '/v1/public/']),
+        responses: [_ok(), _ok(), _ok()],
+      );
+
+      await harness.client.get('/v1/status', decode: ignoreBody);
+      await harness.client.get('/v1/public/config', decode: ignoreBody);
+      await harness.client.get('/v1/status/details', decode: ignoreBody);
+
+      final auth = [
+        for (final r in harness.adapter.requests) r.headers['Authorization'],
+      ];
+      expect(auth, [null, null, 'Bearer access-1']);
+    });
+
+    test('a token is never sent to another origin', () async {
+      final harness = NetworkHarness(
+        tokens: FakeTokens(token: 'access-1'),
+        responses: [_ok()],
+      );
+
+      await harness.client.get(
+        'https://third-party.example/v1/x',
+        decode: ignoreBody,
+      );
+
+      expect(
+        harness.adapter.requests.single.headers.containsKey('Authorization'),
+        isFalse,
+      );
+    });
+
+    test('a 401 recovers a token and replays once with the newest', () async {
+      final tokens = FakeTokens(token: 'old', recovered: 'new');
+      final harness = NetworkHarness(
+        tokens: tokens,
         responses: [_status(401), _ok()],
       );
 
-      await harness.client.get('/v1/me', decode: ignoreBody);
+      await harness.client.get(
+        '/v1/me',
+        query: {'expand': 'roles'},
+        decode: ignoreBody,
+        options: const ApiRequestOptions(headers: {'X-App-Version': '1'}),
+      );
 
-      expect(session.refreshes, ['old']);
+      expect(tokens.recoveries, ['old']);
       final requests = harness.adapter.requests;
       expect(requests, hasLength(2));
       expect(requests.last.headers['Authorization'], 'Bearer new');
+      expect(requests.last.headers['X-App-Version'], '1');
+      expect(requests.last.uri.queryParameters, {'expand': 'roles'});
       expect(
         requests.last.headers['X-Correlation-Id'],
         requests.first.headers['X-Correlation-Id'],
       );
     });
 
-    test('a failed refresh surfaces as UnauthorizedException', () async {
-      final session = FakeSession(token: 'old');
+    test('a newer token already held by the provider is reused', () async {
+      // The provider refreshed meanwhile; recovery hands back that token.
+      final tokens = FakeTokens(token: 'old', recovered: 'already-new');
       final harness = NetworkHarness(
-        session: session,
+        tokens: tokens,
+        responses: [_status(401), _ok()],
+      );
+
+      await harness.client.get('/v1/me', decode: ignoreBody);
+
+      expect(
+        harness.adapter.requests.last.headers['Authorization'],
+        'Bearer already-new',
+      );
+      expect(tokens.recoveries, hasLength(1));
+    });
+
+    test('no better token: the 401 becomes UnauthorizedException', () async {
+      final tokens = FakeTokens(token: 'old');
+      final harness = NetworkHarness(
+        tokens: tokens,
         responses: [_status(401)],
       );
 
@@ -92,13 +155,39 @@ void main() {
         harness.client.get('/v1/me', decode: ignoreBody),
         throwsA(isA<UnauthorizedException>()),
       );
-      expect(session.refreshes, hasLength(1));
+      expect(tokens.recoveries, hasLength(1));
+      expect(harness.adapter.requests, hasLength(1));
     });
 
-    test('a second 401 after refreshing is not refreshed again', () async {
-      final session = FakeSession(token: 'old', refreshedToken: 'new');
+    test('a recovery that returns the same token does not replay', () async {
       final harness = NetworkHarness(
-        session: session,
+        tokens: FakeTokens(token: 'old', recovered: 'old'),
+        responses: [_status(401)],
+      );
+
+      await expectLater(
+        harness.client.get('/v1/me', decode: ignoreBody),
+        throwsA(isA<UnauthorizedException>()),
+      );
+      expect(harness.adapter.requests, hasLength(1));
+    });
+
+    test('a failing recovery keeps the original 401', () async {
+      final harness = NetworkHarness(
+        tokens: FakeTokens(token: 'old', recoveryError: StateError('x')),
+        responses: [_status(401)],
+      );
+
+      await expectLater(
+        harness.client.get('/v1/me', decode: ignoreBody),
+        throwsA(isA<UnauthorizedException>()),
+      );
+    });
+
+    test('a second 401 after replaying is final (no loop)', () async {
+      final tokens = FakeTokens(token: 'old', recovered: 'new');
+      final harness = NetworkHarness(
+        tokens: tokens,
         responses: [_status(401), _status(401)],
       );
 
@@ -106,27 +195,146 @@ void main() {
         harness.client.get('/v1/me', decode: ignoreBody),
         throwsA(isA<UnauthorizedException>()),
       );
-      expect(session.refreshes, hasLength(1));
+      expect(tokens.recoveries, hasLength(1));
       expect(harness.adapter.requests, hasLength(2));
     });
 
-    test('a 401 on a skipAuth request (the refresh call) is not '
-        'intercepted', () async {
-      final session = FakeSession(token: 'old', refreshedToken: 'new');
+    test('a 401 without a token, or with skipAuth, is not recovered', () async {
+      final tokens = FakeTokens(recovered: 'new');
       final harness = NetworkHarness(
-        session: session,
-        responses: [_status(401)],
+        tokens: tokens,
+        responses: [_status(401), _status(401)],
       );
 
       await expectLater(
+        harness.client.get('/v1/me', decode: ignoreBody),
+        throwsA(isA<UnauthorizedException>()),
+      );
+      tokens.token = 'old';
+      await expectLater(
         harness.client.post(
-          '/v1/auth/refresh',
+          '/v1/anything',
           decode: ignoreBody,
           options: const ApiRequestOptions(skipAuth: true),
         ),
         throwsA(isA<UnauthorizedException>()),
       );
-      expect(session.refreshes, isEmpty);
+      expect(tokens.recoveries, isEmpty);
+    });
+
+    test('a 403 is neither recovered nor retried', () async {
+      final tokens = FakeTokens(token: 'old', recovered: 'new');
+      final harness = NetworkHarness(
+        tokens: tokens,
+        responses: [_status(403)],
+      );
+
+      await expectLater(
+        harness.client.get('/v1/me', decode: ignoreBody),
+        throwsA(isA<ForbiddenException>()),
+      );
+      expect(tokens.recoveries, isEmpty);
+      expect(harness.adapter.requests, hasLength(1));
+      expect(harness.delays, isEmpty);
+    });
+
+    test('a JSON body and idempotency key are replayed as sent', () async {
+      final harness = NetworkHarness(
+        tokens: FakeTokens(token: 'old', recovered: 'new'),
+        responses: [_status(401), _ok()],
+      );
+
+      await harness.client.post(
+        '/v1/items',
+        body: const {'label': 'x'},
+        decode: ignoreBody,
+        options: const ApiRequestOptions(idempotencyKey: 'key-1'),
+      );
+
+      final requests = harness.adapter.requests;
+      expect(requests, hasLength(2));
+      expect(requests.last.body, requests.first.body);
+      expect(requests.last.headers['Idempotency-Key'], 'key-1');
+    });
+
+    test('a multipart body is recreated for the replay', () async {
+      final harness = NetworkHarness(
+        tokens: FakeTokens(token: 'old', recovered: 'new'),
+        responses: [_status(401), _ok()],
+      );
+
+      await harness.client.upload(
+        '/v1/files',
+        files: [
+          UploadFile(
+            field: 'file',
+            bytes: Uint8List.fromList([1, 2, 3]),
+            filename: 'a.bin',
+          ),
+        ],
+        decode: ignoreBody,
+      );
+
+      final requests = harness.adapter.requests;
+      expect(requests, hasLength(2));
+      expect(requests.last.data, isNot(same(requests.first.data)));
+      expect(requests.last.body!.length, requests.first.body!.length);
+    });
+
+    test('a consumed stream body is not replayed', () async {
+      final tokens = FakeTokens(token: 'old', recovered: 'new');
+      final harness = NetworkHarness(
+        tokens: tokens,
+        responses: [_status(401)],
+      );
+
+      await expectLater(
+        harness.client.post(
+          '/v1/stream',
+          body: Stream<List<int>>.value([1, 2, 3]),
+          decode: ignoreBody,
+          options: const ApiRequestOptions(
+            headers: {'content-length': '3'},
+          ),
+        ),
+        throwsA(isA<UnauthorizedException>()),
+      );
+      expect(harness.adapter.requests, hasLength(1));
+    });
+  });
+
+  group('prepareForReplay', () {
+    test('accepts JSON values and bytes, rejects streams', () {
+      for (final data in <Object?>[
+        null,
+        const {'a': 1},
+        const [1],
+        'text',
+        3,
+        true,
+        Uint8List(2),
+      ]) {
+        expect(
+          prepareForReplay(RequestOptions(path: '/', data: data)),
+          isTrue,
+          reason: '$data',
+        );
+      }
+      expect(
+        prepareForReplay(
+          RequestOptions(path: '/', data: Stream<List<int>>.value([1])),
+        ),
+        isFalse,
+      );
+    });
+
+    test('clones multipart bodies', () {
+      final form = FormData.fromMap({'a': 'b'});
+      final options = RequestOptions(path: '/', data: form);
+
+      expect(prepareForReplay(options), isTrue);
+      expect(options.data, isA<FormData>());
+      expect(options.data, isNot(same(form)));
     });
   });
 
@@ -289,21 +497,36 @@ void main() {
       expect(harness.logs[2], contains('(retry 2)'));
     });
 
-    test(
-      'a refresh repeat that hits a 503 is retried, once per loop',
-      () async {
-        final session = FakeSession(token: 'old', refreshedToken: 'new');
-        final harness = NetworkHarness(
-          session: session,
-          responses: [_status(401), _status(503), _ok()],
-        );
+    test('an auth replay that hits a 503 is retried, once per loop', () async {
+      final tokens = FakeTokens(token: 'old', recovered: 'new');
+      final harness = NetworkHarness(
+        tokens: tokens,
+        responses: [_status(401), _status(503), _ok()],
+      );
 
-        await harness.client.get('/v1/me', decode: ignoreBody);
+      await harness.client.get('/v1/me', decode: ignoreBody);
 
-        expect(harness.adapter.requests, hasLength(3));
-        expect(session.refreshes, hasLength(1));
-      },
-    );
+      expect(harness.adapter.requests, hasLength(3));
+      expect(tokens.recoveries, hasLength(1));
+    });
+
+    test('a POST that cannot be replayed is not retried', () async {
+      final harness = NetworkHarness(responses: [_status(503)]);
+
+      await expectLater(
+        harness.client.post(
+          '/v1/stream',
+          body: Stream<List<int>>.value([1]),
+          decode: ignoreBody,
+          options: const ApiRequestOptions(
+            retry: RetryPolicy.always,
+            headers: {'content-length': '1'},
+          ),
+        ),
+        throwsA(isA<ServerException>()),
+      );
+      expect(harness.adapter.requests, hasLength(1));
+    });
   });
 
   group('CorrelationIdInterceptor', () {
@@ -352,7 +575,7 @@ void main() {
   group('LoggingInterceptor', () {
     test('logs method, path, status and duration only', () async {
       final harness = NetworkHarness(
-        session: FakeSession(token: 'secret-token'),
+        tokens: FakeTokens(token: 'secret-token'),
         responses: [
           respondJson(
             successEnvelope({'patientName': 'Kamla Devi', 'age': 72}),
@@ -393,7 +616,7 @@ void main() {
 
     test('detailed logs mask secrets and show only query names', () async {
       final harness = NetworkHarness(
-        session: FakeSession(token: 'secret-token'),
+        tokens: FakeTokens(token: 'secret-token'),
         detailedLogging: true,
         responses: [_ok()],
       );

@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:proxy_care_client/core/config/app_environment.dart';
 import 'package:proxy_care_client/core/config/env.dart';
@@ -245,6 +247,91 @@ void main() {
       expect(parse(appName: 'One'), isNot(parse(appName: 'Two')));
     });
   });
+  group('Supabase settings', () {
+    const key = 'sb_publishable_abc123';
+
+    String legacyJwt(String role) {
+      String part(String json) =>
+          base64Url.encode(utf8.encode(json)).replaceAll('=', '');
+      return '${part('{"alg":"HS256"}')}.${part('{"role":"$role"}')}.sig';
+    }
+
+    test('are optional in development', () {
+      final env = parse();
+
+      expect(env.isAuthConfigured, isFalse);
+      expect(env.supabaseUrl, isNull);
+    });
+
+    test('are read and normalized when given', () {
+      final env = parse(
+        supabaseUrl: 'https://project-ref.supabase.co/',
+        supabasePublishableKey: key,
+      );
+
+      expect(env.isAuthConfigured, isTrue);
+      expect(env.supabaseUrl.toString(), 'https://project-ref.supabase.co');
+      expect(env.supabasePublishableKey, key);
+    });
+
+    test('a local Supabase over http is allowed in development only', () {
+      expect(
+        parse(
+          supabaseUrl: 'http://127.0.0.1:54321',
+          supabasePublishableKey: key,
+        ).isAuthConfigured,
+        isTrue,
+      );
+      expect(
+        () => parse(
+          appEnv: 'staging',
+          apiBaseUrl: 'https://api.proxycare.test',
+          supabaseUrl: 'http://project-ref.supabase.co',
+          supabasePublishableKey: key,
+        ),
+        throwsEnvError('SUPABASE_URL must be an https URL'),
+      );
+    });
+
+    test('are required in staging and production', () {
+      expect(
+        () => parse(
+          appEnv: 'production',
+          apiBaseUrl: 'https://api.proxycare.test',
+        ),
+        throwsEnvError('SUPABASE_URL and SUPABASE_PUBLISHABLE_KEY'),
+      );
+    });
+
+    test('must be given together', () {
+      expect(
+        () => parse(supabaseUrl: 'https://project-ref.supabase.co'),
+        throwsEnvError('or neither'),
+      );
+    });
+
+    test('reject secret and service-role keys', () {
+      for (final secret in ['sb_secret_abc', legacyJwt('service_role')]) {
+        expect(
+          () => parse(
+            supabaseUrl: 'https://project-ref.supabase.co',
+            supabasePublishableKey: secret,
+          ),
+          throwsEnvError('must be a publishable key'),
+        );
+      }
+    });
+
+    test('accept a legacy anon key', () {
+      expect(
+        parse(
+          supabaseUrl: 'https://project-ref.supabase.co',
+          supabasePublishableKey: legacyJwt('anon'),
+        ).isAuthConfigured,
+        isTrue,
+      );
+    });
+  });
 }
 
 /// Calls [Env.parse] with empty strings for every define not given.
@@ -254,9 +341,13 @@ Env parse({
   String appName = '',
   String enableLogging = '',
   String featureFlags = '',
+  String supabaseUrl = '',
+  String supabasePublishableKey = '',
   bool requireExplicitEnvironment = false,
 }) {
   return Env.parse(
+    supabaseUrl: supabaseUrl,
+    supabasePublishableKey: supabasePublishableKey,
     appEnv: appEnv,
     apiBaseUrl: apiBaseUrl,
     appName: appName,

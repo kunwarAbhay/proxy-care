@@ -3,5 +3,7 @@
   "API_BASE_URL": "",
   "APP_NAME": "Proxy Care",
   "ENABLE_LOGGING": "false",
-  "FEATURE_FLAGS": ""
+  "FEATURE_FLAGS": "",
+  "SUPABASE_URL": "",
+  "SUPABASE_PUBLISHABLE_KEY": ""
 }

@@ -40,6 +40,8 @@ void main(List<String> arguments) {
       appName: read(Env.appNameKey),
       enableLogging: read(Env.enableLoggingKey),
       featureFlags: read(Env.featureFlagsKey),
+      supabaseUrl: read(Env.supabaseUrlKey),
+      supabasePublishableKey: read(Env.supabasePublishableKeyKey),
       // Files are used for real builds, so they must name the environment.
       requireExplicitEnvironment: true,
     );

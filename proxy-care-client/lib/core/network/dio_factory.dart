@@ -1,11 +1,12 @@
 import 'package:dio/dio.dart';
 
-import 'authentication_session.dart';
+import 'access_token_provider.dart';
 import 'interceptors/auth_interceptor.dart';
 import 'interceptors/correlation_id_interceptor.dart';
 import 'interceptors/logging_interceptor.dart';
 import 'interceptors/retry_interceptor.dart';
 import 'network_config.dart';
+import 'public_endpoints.dart';
 
 /// Builds the app's configured [Dio].
 ///
@@ -19,7 +20,8 @@ import 'network_config.dart';
 ///    every failed attempt (including the 401 that triggers a refresh)
 ///    before recovery is tried.
 /// 4. [AuthInterceptor]: attaches the token just before transmission; on a
-///    401, refreshes and repeats the request.
+///    401, obtains a better token through [UnauthorizedRecovery] and replays
+///    the request once.
 /// 5. [RetryInterceptor]: last, so it sees only failures the earlier
 ///    interceptors did not recover from.
 ///
@@ -31,8 +33,10 @@ final class DioFactory {
   /// Creates a factory.
   const DioFactory({
     required this.baseUrl,
-    required this.session,
+    required this.tokens,
     required this.log,
+    this.recovery,
+    this.publicEndpoints = const PublicEndpoints(),
     this.detailedLogging = false,
     this.adapter,
     this.retryDelay,
@@ -41,8 +45,14 @@ final class DioFactory {
   /// The environment's API base URL.
   final Uri baseUrl;
 
-  /// Supplies and refreshes access tokens.
-  final AuthenticationSession session;
+  /// Supplies the access token.
+  final AccessTokenProvider tokens;
+
+  /// Obtains a token after a 401; null disables recovery.
+  final UnauthorizedRecovery? recovery;
+
+  /// Paths that never get a token.
+  final PublicEndpoints publicEndpoints;
 
   /// Where request log lines go.
   final void Function(String message) log;
@@ -75,7 +85,13 @@ final class DioFactory {
     dio.interceptors.addAll([
       CorrelationIdInterceptor(),
       LoggingInterceptor(log: log, detailed: detailedLogging),
-      AuthInterceptor(session: session, dio: dio),
+      AuthInterceptor(
+        tokens: tokens,
+        recovery: recovery,
+        dio: dio,
+        apiBaseUrl: baseUrl,
+        publicEndpoints: publicEndpoints,
+      ),
       RetryInterceptor(dio: dio, delay: retryDelay),
     ]);
     return dio;

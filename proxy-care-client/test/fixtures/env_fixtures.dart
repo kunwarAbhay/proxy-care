@@ -8,6 +8,8 @@ Env testEnv({
   String appName = 'Proxy Care Test',
   bool enableLogging = false,
   String featureFlags = '',
+  String supabaseUrl = '',
+  String supabasePublishableKey = '',
 }) {
   return Env.parse(
     appEnv: appEnv,
@@ -15,5 +17,7 @@ Env testEnv({
     appName: appName,
     enableLogging: '$enableLogging',
     featureFlags: featureFlags,
+    supabaseUrl: supabaseUrl,
+    supabasePublishableKey: supabasePublishableKey,
   );
 }

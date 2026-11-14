@@ -28,7 +28,8 @@ project.
 | `go_router` | ^18.1.1 | Declarative routing |
 | `flutter_riverpod` | ^3.5.0 | State management and dependency injection |
 | `dio` | ^5.11.1 | HTTP client |
-| `flutter_secure_storage` | ^11.2.0 | Secure storage for tokens and secrets |
+| `flutter_secure_storage` | ^11.2.0 | Secure storage for the Supabase session (Keystore / Keychain / WebCrypto) |
+| `supabase_flutter` | ^2.18.3 | Supabase Auth (identity provider); sessions persisted through secure storage |
 | `freezed_annotation` | ^3.1.0 | Annotations for immutable models (Freezed) |
 | `json_annotation` | ^4.12.0 | Annotations for JSON serialization |
 | `logger` | ^2.8.0 | Logging |
@@ -101,6 +102,8 @@ start-up and throws an `EnvConfigException` listing every problem.
 | `APP_NAME` | Any text | `Proxy Care` |
 | `ENABLE_LOGGING` | `true` or `false` | `false` in production, otherwise `true` |
 | `FEATURE_FLAGS` | Comma-separated snake_case names, e.g. `new_checkout,beta_maps` | none |
+| `SUPABASE_URL` | Supabase project URL (`https://<ref>.supabase.co`); http allowed in development for a local stack | none: required in staging and production, optional in development (the app then runs signed out) |
+| `SUPABASE_PUBLISHABLE_KEY` | Supabase **publishable** key (`sb_publishable_…`, or a legacy anon key). Secret and service-role keys are rejected. | as above; set together with `SUPABASE_URL` |
 
 Production configuration never silently falls back to development: a
 release build without `APP_ENV` fails at start-up, and `make check-env`
@@ -198,6 +201,8 @@ repository.
 ```text
 proxy-care-client/
 ├── ARCHITECTURE.md         Layers, dependency rules, DI and feature conventions
+├── AUTHENTICATION.md       Supabase Auth, session storage, Dio integration
+├── SECURITY.md             Token storage, logging, backend JWT validation
 ├── assets/fonts/          Bundled Noto Sans Devanagari (OFL)
 ├── config/env/             Compile-time defines per environment
 ├── docs/                   Design system → Flutter mapping

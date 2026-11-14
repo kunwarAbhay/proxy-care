@@ -1,30 +1,35 @@
-import 'package:proxy_care_client/core/network/authentication_session.dart';
+import 'package:proxy_care_client/core/network/access_token_provider.dart';
 import 'package:proxy_care_client/core/network/dio_api_client.dart';
 import 'package:proxy_care_client/core/network/dio_factory.dart';
+import 'package:proxy_care_client/core/network/public_endpoints.dart';
 
 import 'fake_http_adapter.dart';
 
-/// A session with controllable tokens that counts refreshes.
-final class FakeSession implements AuthenticationSession {
-  FakeSession({this.token, this.refreshedToken});
+/// Controllable tokens and 401 recovery that record their use.
+final class FakeTokens implements AccessTokenProvider, UnauthorizedRecovery {
+  FakeTokens({this.token, this.recovered, this.recoveryError});
 
-  /// Returned by [accessToken].
+  /// Returned by [getAccessToken].
   String? token;
 
-  /// Returned (and stored as [token]) by [refreshAccessToken].
-  String? refreshedToken;
+  /// Returned (and made current) by [recoverAccessToken].
+  String? recovered;
 
-  /// Tokens passed to [refreshAccessToken].
-  final List<String?> refreshes = [];
+  /// Thrown by [recoverAccessToken] when set.
+  Object? recoveryError;
+
+  /// Tokens passed to [recoverAccessToken].
+  final List<String> recoveries = [];
 
   @override
-  Future<String?> accessToken() async => token;
+  Future<String?> getAccessToken() async => token;
 
   @override
-  Future<String?> refreshAccessToken({required String? rejectedToken}) async {
-    refreshes.add(rejectedToken);
-    token = refreshedToken;
-    return refreshedToken;
+  Future<String?> recoverAccessToken({required String rejectedToken}) async {
+    recoveries.add(rejectedToken);
+    if (recoveryError case final error?) throw error;
+    if (recovered != null) token = recovered;
+    return recovered;
   }
 }
 
@@ -33,13 +38,16 @@ final class FakeSession implements AuthenticationSession {
 final class NetworkHarness {
   NetworkHarness({
     List<FakeResponder> responses = const [],
-    AuthenticationSession? session,
+    FakeTokens? tokens,
     this.detailedLogging = false,
+    PublicEndpoints publicEndpoints = const PublicEndpoints(),
   }) : adapter = FakeHttpAdapter(responses),
-       session = session ?? FakeSession() {
+       tokens = tokens ?? FakeTokens() {
     final dio = DioFactory(
-      baseUrl: Uri.parse('https://api.proxycare.test'),
-      session: this.session,
+      baseUrl: baseUrl,
+      tokens: this.tokens,
+      recovery: this.tokens,
+      publicEndpoints: publicEndpoints,
       log: logs.add,
       detailedLogging: detailedLogging,
       adapter: adapter,
@@ -48,8 +56,11 @@ final class NetworkHarness {
     client = DioApiClient(dio);
   }
 
+  /// The API base URL used by the harness.
+  static final Uri baseUrl = Uri.parse('https://api.proxycare.test');
+
   final FakeHttpAdapter adapter;
-  final AuthenticationSession session;
+  final FakeTokens tokens;
   final bool detailedLogging;
 
   /// Log lines written by the logging interceptor.

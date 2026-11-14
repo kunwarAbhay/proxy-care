@@ -47,7 +47,8 @@ final _rules = [
     appliesTo: RegExp(
       r'^lib/(shared/models/|core/config/|'
       r'core/error/(failure|error_reporter|app_exception|backend_error_code|'
-      r'user_error_kind|crash_reporter)\.dart)',
+      r'user_error_kind|crash_reporter)\.dart|'
+      r'core/auth/(authentication_state|authorization/))',
     ),
     forbidden: _frameworkImports,
   ),
@@ -75,6 +76,25 @@ final _rules = [
       r'^lib/(features/[^/]+/(domain|presentation)/|shared/)',
     ),
     forbidden: _infrastructureErrorImports,
+  ),
+  ImportRule(
+    name: 'only core/auth/supabase and core/di use the Supabase SDK',
+    appliesTo: RegExp(r'^lib/(?!core/auth/supabase/|core/di/)'),
+    forbidden: const [
+      'package:supabase_flutter/',
+      'package:supabase/',
+      'package:gotrue/',
+    ],
+  ),
+  ImportRule(
+    name: 'only core/security uses flutter_secure_storage',
+    appliesTo: RegExp(r'^lib/(?!core/security/)'),
+    forbidden: const ['package:flutter_secure_storage/'],
+  ),
+  ImportRule(
+    name: 'networking does not know the identity provider',
+    appliesTo: RegExp(r'^lib/core/network/'),
+    forbidden: const ['core/auth/', 'package:supabase'],
   ),
   ImportRule(
     name: 'core and shared do not depend on features',
