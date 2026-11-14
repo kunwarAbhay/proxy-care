@@ -21,11 +21,13 @@ abstract final class IntendedDestination {
     if (!raw.startsWith('/') || raw.startsWith('//') || raw.contains(r'\')) {
       return null;
     }
-    final uri = Uri.tryParse(raw);
-    if (uri == null || uri.hasScheme || uri.hasAuthority) return null;
-    if (uri.pathSegments.any((segment) => segment == '.' || segment == '..')) {
+    // Checked on the raw text: Uri.parse would silently resolve `..`.
+    final rawPath = raw.split(RegExp('[?#]')).first;
+    if (rawPath.split('/').any((segment) => segment == '.' || segment == '..')) {
       return null;
     }
+    final uri = Uri.tryParse(raw);
+    if (uri == null || uri.hasScheme || uri.hasAuthority) return null;
     return locationOf(uri);
   }
 

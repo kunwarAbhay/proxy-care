@@ -107,7 +107,11 @@ void main() {
         RouteAccess.fromMetadata(route.metadata),
         isA<AuthenticatedAccess>(),
       );
-      expect(detail.route().metadata, isNull, reason: 'inherits the parent');
+      expect(
+        detail.route(builder: (_, _) => throw UnimplementedError()).metadata,
+        isNull,
+        reason: 'inherits the parent',
+      );
     });
   });
 

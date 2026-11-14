@@ -49,8 +49,9 @@ abstract interface class RouteGuard {
 
 /// Runs [guards] in order; the first redirect wins.
 ///
-/// A redirect to the requested location itself is treated as "allow", so a
-/// misconfigured destination cannot loop.
+/// A redirect to the requested URI itself is treated as "allow", so a
+/// misconfigured destination cannot loop. (A full deep link redirected to
+/// its own path is a real redirect: it drops scheme and host.)
 final class RedirectPipeline {
   /// Creates a pipeline.
   const RedirectPipeline(this.guards);
@@ -62,7 +63,7 @@ final class RedirectPipeline {
   String? redirect(RouteRequest request) {
     for (final guard in guards) {
       final target = guard.redirect(request);
-      if (target != null && target != request.location) return target;
+      if (target != null && target != request.uri.toString()) return target;
     }
     return null;
   }
