@@ -163,18 +163,27 @@ The resolved `pubspec.lock` is uploaded as a build artifact.
 
 ```text
 proxy-care-client/
+├── ARCHITECTURE.md         Layers, dependency rules, DI and feature conventions
 ├── config/                 Compile-time defines per environment
 ├── lib/
+│   ├── main.dart           Entry point: bootstrap, then runApp
 │   ├── app.dart            Root widget (no screens yet)
-│   ├── main.dart           Entry point: validates Env, starts the app
-│   └── core/config/        Env, AppEnvironment, EnvConfigException
-├── test/                   Unit and widget tests
+│   ├── core/               Infrastructure: config, di, error, network, router,
+│   │                       security, theme, utils, widgets, services, constants
+│   ├── features/auth/      Empty data / domain / presentation layer folders
+│   └── shared/             Cross-feature models, widgets, extensions
+├── test/                   Mirrors lib/, plus architecture, fixtures, helpers,
+│                           mocks
 ├── tool/check_env.dart     Validates a config file from the command line
 ├── web/                    Web entry files and icons
 ├── analysis_options.yaml
 ├── Makefile
 └── pubspec.yaml
 ```
+
+See [ARCHITECTURE.md](ARCHITECTURE.md) for the layer rules (checked by
+`test/architecture/dependency_rules_test.dart`), Riverpod dependency-injection
+conventions and how a feature module is built.
 
 ## Design system
 

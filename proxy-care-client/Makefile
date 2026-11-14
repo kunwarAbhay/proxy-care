@@ -16,7 +16,6 @@ FLUTTER ?= flutter
 DART ?= dart
 ENV ?= development
 DEFINES_FILE ?= config/$(ENV).json
-DART_SOURCES := lib test tool
 
 .PHONY: get gen format format-check analyze test check-env build-web
 
@@ -27,10 +26,10 @@ gen:
 	$(DART) run build_runner build
 
 format:
-	$(DART) format $(DART_SOURCES)
+	$(DART) format .
 
 format-check:
-	$(DART) format --output=none --set-exit-if-changed $(DART_SOURCES)
+	$(DART) format --output=none --set-exit-if-changed .
 
 analyze:
 	$(FLUTTER) analyze

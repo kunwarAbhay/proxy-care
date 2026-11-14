@@ -1,11 +1,15 @@
 import 'package:flutter/widgets.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'app.dart';
-import 'core/config/env.dart';
+import 'core/di/bootstrap.dart';
 
-void main() {
-  // Fails fast with an EnvConfigException if the build was given an invalid
-  // configuration, instead of starting against the wrong backend.
-  final env = Env.fromEnvironment();
-  runApp(ProxyCareApp(env: env));
+Future<void> main() async {
+  final container = await bootstrap();
+  runApp(
+    UncontrolledProviderScope(
+      container: container,
+      child: const ProxyCareApp(),
+    ),
+  );
 }
