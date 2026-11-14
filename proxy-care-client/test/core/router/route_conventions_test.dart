@@ -103,14 +103,20 @@ void main() {
       final route = list.route(builder: (_, _) => throw UnimplementedError());
       expect(route.name, 'visits.list');
       expect(route.path, '/visits');
-      expect(RouteAccess.fromMetadata(route.metadata), isA<AuthenticatedAccess>());
+      expect(
+        RouteAccess.fromMetadata(route.metadata),
+        isA<AuthenticatedAccess>(),
+      );
       expect(detail.route().metadata, isNull, reason: 'inherits the parent');
     });
   });
 
   group('IntendedDestination', () {
     test('accepts in-app locations only', () {
-      expect(IntendedDestination.sanitize('/visits/1?tab=a'), '/visits/1?tab=a');
+      expect(
+        IntendedDestination.sanitize('/visits/1?tab=a'),
+        '/visits/1?tab=a',
+      );
       expect(IntendedDestination.sanitize('/visits#frag'), '/visits');
       for (final unsafe in [
         null,
@@ -169,7 +175,9 @@ void main() {
         expect(policy.resolve(Uri.parse(link)), isNull, reason: link);
       }
       expect(
-        const DeepLinkPolicy().resolve(Uri.parse('https://links.example.test/')),
+        const DeepLinkPolicy().resolve(
+          Uri.parse('https://links.example.test/'),
+        ),
         isNull,
         reason: 'no domain is configured by default',
       );

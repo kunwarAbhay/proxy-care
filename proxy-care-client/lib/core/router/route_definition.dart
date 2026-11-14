@@ -92,7 +92,10 @@ final class RouteDefinition {
     final segments = [
       for (final segment in fullPath.split('/'))
         segment.startsWith(':')
-            ? _encode(segment.substring(1), pathParameters[segment.substring(1)]!)
+            ? _encode(
+                segment.substring(1),
+                pathParameters[segment.substring(1)]!,
+              )
             : segment,
     ];
     final path = segments.join('/');

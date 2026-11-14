@@ -35,7 +35,11 @@ abstract final class IntendedDestination {
 
   /// [target] with [intended] (and an optional [reason]) added as query
   /// parameters. Existing query parameters of [target] are kept.
-  static String attach(String target, {required String intended, String? reason}) {
+  static String attach(
+    String target, {
+    required String intended,
+    String? reason,
+  }) {
     final uri = Uri.parse(target);
     return locationOf(
       uri.replace(

@@ -25,7 +25,10 @@ GoRouter createAppRouter({
   List<NavigatorObserver>? observers,
 }) {
   final destinations = options.destinations;
-  for (final location in [options.initialLocation, ...destinations.configured]) {
+  for (final location in [
+    options.initialLocation,
+    ...destinations.configured,
+  ]) {
     if (IntendedDestination.sanitize(location) == null) {
       throw ArgumentError.value(location, 'options', 'not an in-app location');
     }

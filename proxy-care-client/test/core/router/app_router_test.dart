@@ -26,7 +26,10 @@ void main() {
       expect(harness.location, '/public');
       expect(find.text('public'), findsOneWidget);
       final names = harness.container.read(routeRegistryProvider).routeNames;
-      expect(names, containsAll(['router.notFound', 'test.item', 'test.tabTwo']));
+      expect(
+        names,
+        containsAll(['router.notFound', 'test.item', 'test.tabTwo']),
+      );
       expect(
         harness.module.rootNavigatorKey,
         same(harness.container.read(rootNavigatorKeyProvider)),

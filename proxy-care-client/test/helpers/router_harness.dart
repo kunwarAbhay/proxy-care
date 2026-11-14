@@ -195,8 +195,9 @@ Widget labelledPlaceholder(
 ) => Text('placeholder ${kind.name}');
 
 /// A user, optionally with [roles].
-Authenticated signedIn({Set<Role> roles = const {}}) =>
-    Authenticated(user: AuthenticatedUser(id: 'user-1', roles: roles));
+Authenticated signedIn({Set<Role> roles = const {}}) => Authenticated(
+  user: AuthenticatedUser(id: 'user-1', roles: roles),
+);
 
 /// The router, its container and the fake session behind it.
 final class RouterHarness {

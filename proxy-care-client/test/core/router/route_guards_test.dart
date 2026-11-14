@@ -40,7 +40,9 @@ void main() {
         Authenticated(user: _user),
       ]) {
         expect(
-          guard.redirect(_request('/p', access: const PublicAccess(), auth: auth)),
+          guard.redirect(
+            _request('/p', access: const PublicAccess(), auth: auth),
+          ),
           isNull,
         );
       }
@@ -177,8 +179,9 @@ void main() {
       authorizer: authorizer,
       destinations: _destinations,
     );
-    Authenticated user([Set<Role> roles = const {}]) =>
-        Authenticated(user: AuthenticatedUser(id: 'u1', roles: roles));
+    Authenticated user([Set<Role> roles = const {}]) => Authenticated(
+      user: AuthenticatedUser(id: 'u1', roles: roles),
+    );
 
     test('checks roles, permissions and features', () {
       final byRole = AuthenticatedAccess(anyOfRoles: {admin});
@@ -187,8 +190,14 @@ void main() {
       const offFeature = AuthenticatedAccess(feature: 'other');
 
       expect(authorizer.check(byRole, _user), RouteDenial.missingRole);
-      expect(authorizer.check(byPermission, _user), RouteDenial.missingPermission);
-      expect(authorizer.check(offFeature, _user), RouteDenial.featureUnavailable);
+      expect(
+        authorizer.check(byPermission, _user),
+        RouteDenial.missingPermission,
+      );
+      expect(
+        authorizer.check(offFeature, _user),
+        RouteDenial.featureUnavailable,
+      );
       expect(authorizer.check(byFeature, _user), isNull);
       final adminUser = user({admin}).user;
       expect(authorizer.check(byRole, adminUser), isNull);

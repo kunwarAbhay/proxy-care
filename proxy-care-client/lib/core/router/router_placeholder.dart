@@ -19,12 +19,11 @@ enum RouterPlaceholderKind {
 /// Builds what a router fallback shows. Replace it (through
 /// `RouterOptions.placeholderBuilder`) when the product's real waiting,
 /// error and not-found screens exist.
-typedef RouterPlaceholderBuilder =
-    Widget Function(
-      BuildContext context,
-      RouterPlaceholderKind kind,
-      GoRouterState state,
-    );
+typedef RouterPlaceholderBuilder = Widget Function(
+  BuildContext context,
+  RouterPlaceholderKind kind,
+  GoRouterState state,
+);
 
 /// The default fallback: [RouterPlaceholder].
 Widget defaultRouterPlaceholder(

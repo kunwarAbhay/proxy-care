@@ -35,8 +35,7 @@ abstract class RouteModule {
   List<RouteBase> buildRoutes(RouteBuildContext context);
 
   /// Resolvers for notification payload types, keyed by `<name>.<event>`.
-  Map<String, NotificationLocationResolver> get notificationRoutes =>
-      const {};
+  Map<String, NotificationLocationResolver> get notificationRoutes => const {};
 }
 
 /// A route tree that breaks the routing conventions.
@@ -78,7 +77,8 @@ final class RouteRegistry {
       if (!RouteConventions.isModuleName(name)) {
         problems.add('module "$name" must be lowerCamelCase');
       }
-      if (!moduleNames.add(name)) problems.add('module "$name" is listed twice');
+      if (!moduleNames.add(name))
+        problems.add('module "$name" is listed twice');
 
       final moduleRoutes = module.buildRoutes(context);
       for (final route in moduleRoutes) {
@@ -95,8 +95,7 @@ final class RouteRegistry {
 
       for (final MapEntry(key: type, value: resolver)
           in module.notificationRoutes.entries) {
-        if (!RouteConventions.isRouteName(type) ||
-            !type.startsWith('$name.')) {
+        if (!RouteConventions.isRouteName(type) || !type.startsWith('$name.')) {
           problems.add('notification type "$type" must be "$name.<event>"');
         }
         if (resolvers.containsKey(type)) {
@@ -132,10 +131,13 @@ final class RouteRegistry {
     required Set<String> names,
     required List<String> problems,
   }) {
-    final isCovered = covered || RouteAccess.fromMetadata(route.metadata) != null;
+    final isCovered =
+        covered || RouteAccess.fromMetadata(route.metadata) != null;
     switch (route) {
       case GoRoute(:final path, :final name):
-        problems.addAll(RouteConventions.pathProblems(path, absolute: absolute));
+        problems.addAll(
+          RouteConventions.pathProblems(path, absolute: absolute),
+        );
         if (name == null) {
           problems.add('route "$path" in module "$module" has no name');
         } else {
@@ -143,7 +145,8 @@ final class RouteRegistry {
               !name.startsWith('$module.')) {
             problems.add('route name "$name" must be "$module.<screen>"');
           }
-          if (!names.add(name)) problems.add('route name "$name" is used twice');
+          if (!names.add(name))
+            problems.add('route name "$name" is used twice');
         }
         if (!isCovered) {
           problems.add('route "${name ?? path}" declares no RouteAccess');

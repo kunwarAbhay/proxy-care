@@ -45,5 +45,6 @@ final class NavigationPayload {
 
 /// Maps a validated [NavigationPayload] to an in-app location, or null when
 /// the payload cannot be opened. Must be pure: no I/O, no navigation.
-typedef NotificationLocationResolver =
-    String? Function(NavigationPayload payload);
+typedef NotificationLocationResolver = String? Function(
+  NavigationPayload payload,
+);
