@@ -15,6 +15,7 @@ const _frameworkImports = [
   'package:riverpod',
   'package:dio/',
   'package:flutter_secure_storage/',
+  'package:go_router/',
 ];
 
 /// Files that know about `AppException`s and how they are produced. Only
@@ -48,7 +49,10 @@ final _rules = [
       r'^lib/(shared/models/|core/config/|'
       r'core/error/(failure|error_reporter|app_exception|backend_error_code|'
       r'user_error_kind|crash_reporter)\.dart|'
-      r'core/auth/(authentication_state|authorization/))',
+      r'core/auth/(authentication_state|authorization/)|'
+      r'core/router/(route_conventions|route_access|route_guards|'
+      r'intended_destination|deep_link_policy|navigation_payload|'
+      r'redirect_destinations)\.dart)',
     ),
     forbidden: _frameworkImports,
   ),

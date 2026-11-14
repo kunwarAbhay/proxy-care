@@ -205,10 +205,11 @@ proxy-care-client/
 ├── SECURITY.md             Token storage, logging, backend JWT validation
 ├── assets/fonts/          Bundled Noto Sans Devanagari (OFL)
 ├── config/env/             Compile-time defines per environment
-├── docs/                   Design system → Flutter mapping
+├── docs/                   Design system mapping, navigation, deep linking
 ├── lib/
 │   ├── main.dart           Entry point: bootstrap, then runApp
-│   ├── app.dart            Root widget (no screens yet)
+│   ├── app.dart            Root widget: theme, localization, router
+│   ├── app_routes.dart     Feature route modules (none yet)
 │   ├── core/               Infrastructure: config, di, error, l10n, network,
 │   │                       router, security, theme, utils, widgets, services,
 │   │                       constants

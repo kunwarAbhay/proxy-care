@@ -69,7 +69,8 @@ Arrows point from the code that depends to the code it depends on.
 ```text
 lib/
 ├── main.dart                Entry point: bootstrap, then runApp
-├── app.dart                 Root widget (ProxyCareApp)
+├── app.dart                 Root widget (ProxyCareApp, MaterialApp.router)
+├── app_routes.dart          The feature route modules (the only list of features)
 ├── core/
 │   ├── config/              Env: compile-time configuration and validation
 │   ├── constants/           Feature-agnostic constants, one file per topic
@@ -81,7 +82,8 @@ lib/
 │   ├── l10n/                ARB strings, generated localizations, error
 │   │                        messages
 │   ├── network/             Dio client, interceptors, network errors
-│   ├── router/              GoRouter set-up
+│   ├── router/              The single GoRouter: route definitions, modules,
+│   │                        guards, deep links, notification entry point
 │   ├── security/            Secure key-value storage
 │   ├── services/            Other cross-cutting services
 │   ├── theme/               Design-system tokens, breakpoints, ThemeData
@@ -136,7 +138,8 @@ locator and no global mutable singleton.
 
 | Providers | File |
 | --- | --- |
-| Infrastructure (env, logger, error reporter, crash reporter, error mapper; later storage, router) | `core/di/core_providers.dart` |
+| Infrastructure (env, logger, error reporter, crash reporter, error mapper) | `core/di/core_providers.dart` |
+| Routing (route modules, options, registry, router, notification navigator) | `core/di/router_providers.dart` |
 | Networking (Dio, API client) | `core/di/network_providers.dart` |
 | Authentication (Supabase, session, state, authorization) | `core/di/auth_providers.dart` |
 | A feature's data sources, repositories and use cases | `features/<feature>/<feature>_providers.dart` |
@@ -255,6 +258,9 @@ Build a feature from the inside out:
    repositories (typed as the interface) and use cases.
 4. **Presentation**: controllers watch use-case providers and expose
    `AsyncValue` or plain state to widgets.
+5. **Routes**: `<feature>_routes.dart` declares the feature's
+   `RouteDefinition`s and a `RouteModule`, listed once in
+   `lib/app_routes.dart` (see [Navigation](#navigation)).
 
 A feature may use another feature's **domain** layer (entities, repository
 interfaces, use cases), but never its data or presentation layers.
@@ -523,6 +529,22 @@ values, headers and bodies are not logged; debug builds add headers with
 secrets masked and query parameter names. Body logging is off and, if
 enabled, masks credentials and personal or health fields (`LogRedactor`).
 
+## Navigation
+
+One `GoRouter` (`routerProvider`), assembled from feature `RouteModule`s
+listed in `lib/app_routes.dart` and validated by `RouteRegistry`. Every
+route declares a `RouteAccess` (public, guest-only, or authenticated with
+optional roles, permissions and feature); pure guards
+(`DeepLinkGuard`, `AuthenticationGuard`, `AuthorizationGuard`) run as the
+top-level redirect and again whenever the authentication state changes.
+Interrupted locations travel in the `from` query parameter and are
+sanitized before reuse. Redirect destinations are configurable through
+`routerOptionsProvider`; until product screens exist they fall back to
+router placeholders under `/_/`. Identity is always in path parameters,
+extras are optional. Notification taps enter through
+`notificationNavigatorProvider`. Details: [docs/navigation.md](docs/navigation.md)
+and [docs/deep-linking.md](docs/deep-linking.md).
+
 ## Application initialization
 
 `main()` → `runGuardedZone(...)` → `bootstrap()` → `runApp`:
@@ -538,8 +560,10 @@ enabled, masks credentials and personal or health fields (`LogRedactor`).
    override `errorReporterProvider` for a crash-reporting service), and
    `installErrorWidgetBuilder()` keeps error details out of failed widgets
    outside debug builds.
-5. `main` runs `ProxyCareApp` inside
-   `UncontrolledProviderScope(container: ...)`.
+5. `main` passes `routeModulesProvider.overrideWithValue(appRouteModules)`
+   to `bootstrap(overrides:)` and runs `ProxyCareApp` inside
+   `UncontrolledProviderScope(container: ...)`; `ProxyCareApp` uses
+   `MaterialApp.router` with `routerProvider`.
 
 Bootstrap contains no feature logic. Future infrastructure that must be ready
 before the first frame (for example restoring a session from secure storage)

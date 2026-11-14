@@ -1,5 +1,6 @@
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/misc.dart' show Override;
 
 import '../config/env.dart';
 import '../error/error_widget_builder.dart';
@@ -22,14 +23,19 @@ import 'core_providers.dart';
 /// 5. Register the bundled fonts' licences.
 /// 6. Initialize Supabase Auth with secure storage and restore the session.
 ///
+/// [overrides] are added to the container; the app uses them to register
+/// the features' route modules (see `lib/app_routes.dart`).
+///
 /// Run it inside `runGuardedZone` (see `main.dart`) so the binding and the
 /// app share the zone that catches asynchronous errors.
 ///
-Future<ProviderContainer> bootstrap() async {
+Future<ProviderContainer> bootstrap({
+  List<Override> overrides = const [],
+}) async {
   WidgetsFlutterBinding.ensureInitialized();
 
   final env = Env.fromEnvironment();
-  final container = createAppContainer(env: env);
+  final container = createAppContainer(env: env, overrides: overrides);
 
   installGlobalErrorHandlers(container.read(errorReporterProvider));
   installErrorWidgetBuilder();
