@@ -203,8 +203,10 @@ final class SupabaseAuthenticationSession implements AuthenticationSession {
 
   static bool _sameState(AuthenticationState a, AuthenticationState b) =>
       switch ((a, b)) {
-        (Authenticated(user: final u1, expiresAt: final e1),
-            Authenticated(user: final u2, expiresAt: final e2)) =>
+        (
+          Authenticated(user: final u1, expiresAt: final e1),
+          Authenticated(user: final u2, expiresAt: final e2),
+        ) =>
           u1 == u2 && e1 == e2,
         _ => a.runtimeType == b.runtimeType,
       };

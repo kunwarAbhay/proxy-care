@@ -55,11 +55,13 @@ final class SecureStorageException implements Exception {
 final class FlutterSecureKeyValueStore implements SecureKeyValueStore {
   /// Creates a store with the app's platform options.
   FlutterSecureKeyValueStore({FlutterSecureStorage? storage})
-    : _storage = storage ?? const FlutterSecureStorage(
-        aOptions: androidOptions,
-        iOptions: iosOptions,
-        webOptions: webOptions,
-      );
+    : _storage =
+          storage ??
+          const FlutterSecureStorage(
+            aOptions: androidOptions,
+            iOptions: iosOptions,
+            webOptions: webOptions,
+          );
 
   final FlutterSecureStorage _storage;
 

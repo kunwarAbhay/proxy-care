@@ -132,7 +132,8 @@ void main() {
         'AES_GCM_NoPadding',
       );
       expect(
-        FlutterSecureKeyValueStore.androidOptions.toMap()['storageCipherAlgorithm'],
+        FlutterSecureKeyValueStore.androidOptions
+            .toMap()['storageCipherAlgorithm'],
         'AES_GCM_NoPadding',
       );
       expect(
@@ -142,40 +143,46 @@ void main() {
       expect(FlutterSecureKeyValueStore.iosOptions.synchronizable, isFalse);
     });
 
-    test('platform errors become SecureStorageExceptions without values', () async {
-      final platform = _MockFlutterSecureStorage();
-      when(
-        () => platform.write(key: any(named: 'key'), value: any(named: 'value')),
-      ).thenThrow(PlatformException(code: 'keychain', message: 'denied'));
-      when(
-        () => platform.read(key: any(named: 'key')),
-      ).thenThrow(PlatformException(code: 'keystore'));
-      when(
-        () => platform.delete(key: any(named: 'key')),
-      ).thenThrow(PlatformException(code: 'keystore'));
-      final store = FlutterSecureKeyValueStore(storage: platform);
+    test(
+      'platform errors become SecureStorageExceptions without values',
+      () async {
+        final platform = _MockFlutterSecureStorage();
+        when(
+          () => platform.write(
+            key: any(named: 'key'),
+            value: any(named: 'value'),
+          ),
+        ).thenThrow(PlatformException(code: 'keychain', message: 'denied'));
+        when(
+          () => platform.read(key: any(named: 'key')),
+        ).thenThrow(PlatformException(code: 'keystore'));
+        when(
+          () => platform.delete(key: any(named: 'key')),
+        ).thenThrow(PlatformException(code: 'keystore'));
+        final store = FlutterSecureKeyValueStore(storage: platform);
 
-      await expectLater(
-        store.write('session', 'secret-token-value'),
-        throwsA(
-          isA<SecureStorageException>()
-              .having((e) => e.operation, 'op', SecureStorageOperation.write)
-              .having(
-                (e) => e.toString(),
-                'message',
-                isNot(contains('secret-token-value')),
-              ),
-        ),
-      );
-      await expectLater(
-        store.read('session'),
-        throwsA(isA<SecureStorageException>()),
-      );
-      await expectLater(
-        store.delete('session'),
-        throwsA(isA<SecureStorageException>()),
-      );
-    });
+        await expectLater(
+          store.write('session', 'secret-token-value'),
+          throwsA(
+            isA<SecureStorageException>()
+                .having((e) => e.operation, 'op', SecureStorageOperation.write)
+                .having(
+                  (e) => e.toString(),
+                  'message',
+                  isNot(contains('secret-token-value')),
+                ),
+          ),
+        );
+        await expectLater(
+          store.read('session'),
+          throwsA(isA<SecureStorageException>()),
+        );
+        await expectLater(
+          store.delete('session'),
+          throwsA(isA<SecureStorageException>()),
+        );
+      },
+    );
   });
 
   test('Supabase gets secure storage for the session and PKCE', () {
@@ -293,7 +300,10 @@ void main() {
         container.read(authenticationSessionProvider),
         isA<UnconfiguredAuthenticationSession>(),
       );
-      expect(container.read(authenticationStateProvider), isA<Unauthenticated>());
+      expect(
+        container.read(authenticationStateProvider),
+        isA<Unauthenticated>(),
+      );
       expect(
         await container.read(authenticationSessionProvider).getAccessToken(),
         isNull,

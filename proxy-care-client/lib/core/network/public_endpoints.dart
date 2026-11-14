@@ -13,8 +13,7 @@ final class PublicEndpoints {
 
   /// Whether [path] needs no token.
   bool contains(String path) => paths.any(
-    (pattern) => pattern.endsWith('/')
-        ? path.startsWith(pattern)
-        : path == pattern,
+    (pattern) =>
+        pattern.endsWith('/') ? path.startsWith(pattern) : path == pattern,
   );
 }

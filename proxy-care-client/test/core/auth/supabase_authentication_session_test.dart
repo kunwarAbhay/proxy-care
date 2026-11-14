@@ -117,16 +117,19 @@ void main() {
       expect(session.currentState, isA<Unauthenticated>());
     });
 
-    test('a rejected refresh token expires the session and clears storage', () async {
-      await emit(AuthChangeEvent.signedIn, withSession: fakeSession());
-      await emit(
-        AuthChangeEvent.signedOut,
-        reason: SignOutReason.sessionExpired,
-      );
+    test(
+      'a rejected refresh token expires the session and clears storage',
+      () async {
+        await emit(AuthChangeEvent.signedIn, withSession: fakeSession());
+        await emit(
+          AuthChangeEvent.signedOut,
+          reason: SignOutReason.sessionExpired,
+        );
 
-      expect(session.currentState, isA<SessionExpired>());
-      expect(store.values, isEmpty);
-    });
+        expect(session.currentState, isA<SessionExpired>());
+        expect(store.values, isEmpty);
+      },
+    );
 
     test('an unusable stored session also counts as expired', () async {
       await emit(
@@ -243,7 +246,8 @@ void main() {
     });
 
     test('a missing session is invalid', () async {
-      when(() => auth.refreshSession()).thenThrow(AuthSessionMissingException());
+      when(() => auth.refreshSession())
+          .thenThrow(AuthSessionMissingException());
 
       await expectLater(
         session.refreshSession(),
