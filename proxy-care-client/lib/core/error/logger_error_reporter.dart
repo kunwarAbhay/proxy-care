@@ -12,11 +12,13 @@ final class LoggerErrorReporter implements ErrorReporter {
   /// Creates a reporter that writes to [logger] and [crashReporter].
   const LoggerErrorReporter(
     this._logger, {
-    CrashReporter crashReporter = const NoopCrashReporter(),
-  }) : _crashReporter = crashReporter;
+    this.crashReporter = const NoopCrashReporter(),
+  });
 
   final Logger _logger;
-  final CrashReporter _crashReporter;
+
+  /// Where privacy-safe crash reports go.
+  final CrashReporter crashReporter;
 
   /// Contexts of errors that nothing handled.
   static const Set<String> _uncaughtContexts = {'flutter', 'platform', 'zone'};
@@ -25,7 +27,7 @@ final class LoggerErrorReporter implements ErrorReporter {
   void report(Object error, StackTrace stackTrace, {String? context}) {
     final where = context == null ? '' : ' ($context)';
     _logger.e('Unhandled error$where', error: error, stackTrace: stackTrace);
-    _crashReporter.record(
+    crashReporter.record(
       CrashReport.from(
         error,
         stackTrace,
