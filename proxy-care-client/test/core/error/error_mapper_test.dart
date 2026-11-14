@@ -27,6 +27,7 @@ void main() {
       DioExceptionType.connectionTimeout: TimeoutException,
       DioExceptionType.sendTimeout: TimeoutException,
       DioExceptionType.receiveTimeout: TimeoutException,
+      DioExceptionType.transformTimeout: TimeoutException,
       DioExceptionType.cancel: CancelledException,
       DioExceptionType.connectionError: NetworkException,
       DioExceptionType.badCertificate: NetworkException,
