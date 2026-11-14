@@ -165,6 +165,7 @@ The resolved `pubspec.lock` is uploaded as a build artifact.
 proxy-care-client/
 ├── ARCHITECTURE.md         Layers, dependency rules, DI and feature conventions
 ├── config/                 Compile-time defines per environment
+├── docs/                   Design system → Flutter mapping
 ├── lib/
 │   ├── main.dart           Entry point: bootstrap, then runApp
 │   ├── app.dart            Root widget (no screens yet)
@@ -187,8 +188,17 @@ conventions and how a feature module is built.
 
 ## Design system
 
-Visual design follows the Proxy Care Design System
-(`claude/proxycare-design-system.md` in the Proxy Care project). It is not
-implemented yet; the web manifest only uses its background (`#F4FBF8`) and
-primary (`#006A60`) colors. The web icons are plain placeholders until brand
-artwork exists.
+The UI follows the Proxy Care Design System (`claude/proxycare-design-system.md`
+in the Proxy Care project), the single source of truth. It is implemented
+as:
+
+- tokens and theme in `lib/core/theme/` (`buildProxyCareTheme`, the
+  `PcTheme` extension, the density providers);
+- components in `lib/shared/widgets/` (`PcButton`, `PcTextField`, `PcCard`,
+  …).
+
+[docs/design-system-mapping.md](docs/design-system-mapping.md) maps every
+token and component to code and records how each ambiguity in the spec was
+handled. The design system defines a light theme only, in two densities:
+standard (family app) and comfortable (caretaker app). The web icons are
+plain placeholders until brand artwork exists.
