@@ -16,14 +16,15 @@ final class DioApiClient implements ApiClient {
   /// Creates a client over [dio].
   const DioApiClient(
     this._dio, {
-    ErrorMapper errorMapper = const ErrorMapper(),
+    this.errorMapper = const ErrorMapper(),
     ResponseParser? parser,
-  }) : _errorMapper = errorMapper,
-       _parser = parser ?? const ResponseParser();
+  }) : _parser = parser ?? const ResponseParser();
 
   final Dio _dio;
-  final ErrorMapper _errorMapper;
   final ResponseParser _parser;
+
+  /// Maps Dio errors to `AppException`s.
+  final ErrorMapper errorMapper;
 
   @override
   Future<ApiResponse<T>> get<T>(
@@ -225,7 +226,7 @@ final class DioApiClient implements ApiClient {
         ),
       );
     } on DioException catch (error) {
-      throw _errorMapper.map(error);
+      throw errorMapper.map(error);
     }
   }
 
@@ -240,8 +241,7 @@ final class DioApiClient implements ApiClient {
       method: method,
       headers: {
         ...options.headers,
-        if (options.idempotencyKey case final key?)
-          ApiHeaders.idempotencyKey: key,
+        ApiHeaders.idempotencyKey: ?options.idempotencyKey,
       },
       receiveTimeout: options.receiveTimeout,
       // Without a body there is nothing to time out on, and on web Dio
@@ -250,7 +250,7 @@ final class DioApiClient implements ApiClient {
       responseType: responseType,
       extra: {
         if (options.skipAuth) RequestExtra.skipAuth: true,
-        if (options.retry case final retry?) RequestExtra.retryPolicy: retry,
+        RequestExtra.retryPolicy: ?options.retry,
       },
     );
   }

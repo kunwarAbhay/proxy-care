@@ -15,16 +15,17 @@ import 'log_redactor.dart';
 final class LoggingInterceptor extends Interceptor {
   /// Creates the interceptor, writing to [log].
   LoggingInterceptor({
-    required void Function(String message) log,
+    required this.log,
     this.detailed = false,
     this.logBodies = false,
     this.redactor = const LogRedactor(),
     DateTime Function()? clock,
-  }) : _log = log,
-       _clock = clock ?? DateTime.now;
+  }) : _clock = clock ?? DateTime.now;
 
-  final void Function(String message) _log;
   final DateTime Function() _clock;
+
+  /// Where log lines go.
+  final void Function(String message) log;
 
   /// Adds masked headers and query parameter names (debug builds).
   final bool detailed;
@@ -40,7 +41,7 @@ final class LoggingInterceptor extends Interceptor {
     options.extra[RequestExtra.startedAt] = _clock();
     if (detailed) {
       final query = options.uri.queryParameters.keys.join(', ');
-      _log(
+      log(
         '${_label(options)} → sending'
         '${query.isEmpty ? '' : ' (query: $query)'}'
         ' headers: ${redactor.headers(options.headers)}'
@@ -59,7 +60,7 @@ final class LoggingInterceptor extends Interceptor {
     final body = detailed && logBodies
         ? ' body: ${redactor.json(response.data)}'
         : '';
-    _log(
+    log(
       '${_label(options)} → ${response.statusCode}${_duration(options)}$body',
     );
     handler.next(response);
@@ -69,7 +70,7 @@ final class LoggingInterceptor extends Interceptor {
   void onError(DioException err, ErrorInterceptorHandler handler) {
     final options = err.requestOptions;
     final outcome = err.response?.statusCode?.toString() ?? err.type.name;
-    _log('${_label(options)} → $outcome${_duration(options)}');
+    log('${_label(options)} → $outcome${_duration(options)}');
     handler.next(err);
   }
 

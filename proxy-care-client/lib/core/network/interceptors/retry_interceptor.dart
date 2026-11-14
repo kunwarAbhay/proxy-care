@@ -26,15 +26,16 @@ typedef RetryDelay = Future<void> Function(Duration delay);
 final class RetryInterceptor extends Interceptor {
   /// Creates the interceptor. [dio] dispatches the retries.
   RetryInterceptor({
-    required Dio dio,
+    required this.dio,
     this.maxRetries = NetworkConfig.maxRetries,
     this.baseDelay = NetworkConfig.retryBaseDelay,
     RetryDelay? delay,
-  }) : _dio = dio,
-       _delay = delay ?? Future<void>.delayed;
+  }) : _delay = delay ?? Future<void>.delayed;
 
-  final Dio _dio;
   final RetryDelay _delay;
+
+  /// Dispatches the retries.
+  final Dio dio;
 
   /// Default number of retries after the first attempt.
   final int maxRetries;
@@ -71,7 +72,7 @@ final class RetryInterceptor extends Interceptor {
       // A multipart body can be sent once; each retry needs a fresh copy.
       if (options.data case final FormData form) options.data = form.clone();
       try {
-        final response = await _dio.fetch<Object?>(options);
+        final response = await dio.fetch<Object?>(options);
         options.extra.remove(RequestExtra.isRetry);
         handler.resolve(response);
         return;

@@ -18,12 +18,13 @@ import '../request_options.dart';
 /// session's responsibility (authentication milestone).
 final class AuthInterceptor extends Interceptor {
   /// Creates the interceptor. [dio] repeats requests after a refresh.
-  AuthInterceptor({required AuthenticationSession session, required Dio dio})
-    : _session = session,
-      _dio = dio;
+  AuthInterceptor({required this.session, required this.dio});
 
-  final AuthenticationSession _session;
-  final Dio _dio;
+  /// Supplies and refreshes tokens.
+  final AuthenticationSession session;
+
+  /// Repeats requests after a refresh.
+  final Dio dio;
 
   static const String _bearer = 'Bearer ';
 
@@ -37,7 +38,7 @@ final class AuthInterceptor extends Interceptor {
       handler.next(options);
       return;
     }
-    final token = await _session.accessToken();
+    final token = await session.accessToken();
     if (token != null && token.isNotEmpty) {
       options.headers[ApiHeaders.authorization] = '$_bearer$token';
     }
@@ -66,7 +67,7 @@ final class AuthInterceptor extends Interceptor {
 
     final String? token;
     try {
-      token = await _session.refreshAccessToken(rejectedToken: rejected);
+      token = await session.refreshAccessToken(rejectedToken: rejected);
     } on Object {
       // A failed refresh leaves the original 401 as the outcome.
       handler.next(err);
@@ -83,7 +84,7 @@ final class AuthInterceptor extends Interceptor {
     try {
       // The repeat runs the whole chain again; this interceptor attaches
       // the new token from the session.
-      handler.resolve(await _dio.fetch<Object?>(options));
+      handler.resolve(await dio.fetch<Object?>(options));
     } on DioException catch (repeatError) {
       handler.next(repeatError);
     }
