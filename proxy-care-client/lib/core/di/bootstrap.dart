@@ -2,6 +2,7 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../config/env.dart';
+import '../error/error_widget_builder.dart';
 import '../error/global_error_handlers.dart';
 import 'app_container.dart';
 import 'core_providers.dart';
@@ -14,7 +15,11 @@ import 'core_providers.dart';
 /// 2. Read and validate the environment configuration. An invalid build
 ///    throws `EnvConfigException` here, before anything else starts.
 /// 3. Create the Riverpod container, which wires the infrastructure.
-/// 4. Route uncaught framework and platform errors to the `ErrorReporter`.
+/// 4. Route uncaught framework and platform errors to the `ErrorReporter`,
+///    and keep error details out of failed widgets outside debug builds.
+///
+/// Run it inside `runGuardedZone` (see `main.dart`) so the binding and the
+/// app share the zone that catches asynchronous errors.
 ///
 /// Asynchronous infrastructure set-up (for example restoring a session from
 /// secure storage) is added here as a later step.
@@ -25,6 +30,7 @@ Future<ProviderContainer> bootstrap() async {
   final container = createAppContainer(env: env);
 
   installGlobalErrorHandlers(container.read(errorReporterProvider));
+  installErrorWidgetBuilder();
 
   return container;
 }

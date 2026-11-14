@@ -3,13 +3,23 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'app.dart';
 import 'core/di/bootstrap.dart';
+import 'core/di/core_providers.dart';
+import 'core/error/error_reporter.dart';
+import 'core/error/global_error_handlers.dart';
 
-Future<void> main() async {
-  final container = await bootstrap();
-  runApp(
-    UncontrolledProviderScope(
-      container: container,
-      child: const ProxyCareApp(),
-    ),
+void main() {
+  ErrorReporter? reporter;
+  runGuardedZone(
+    () async {
+      final container = await bootstrap();
+      reporter = container.read(errorReporterProvider);
+      runApp(
+        UncontrolledProviderScope(
+          container: container,
+          child: const ProxyCareApp(),
+        ),
+      );
+    },
+    reporter: () => reporter,
   );
 }

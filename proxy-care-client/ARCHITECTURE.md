@@ -46,7 +46,8 @@ Arrows point from the code that depends to the code it depends on.
 | Domain imports no Flutter (`package:flutter`, `material_ui`, `dart:ui`) | Yes |
 | Domain imports no Dio, Riverpod, secure storage or `json_annotation` | Yes |
 | Domain imports nothing from `data/` or `presentation/` | Yes |
-| Types the domain uses (`shared/models`, `core/config`, `Failure`, `ErrorReporter`) are pure Dart | Yes |
+| Types the domain uses (`shared/models`, `core/config`, `AppFailure`, `ErrorReporter`) are pure Dart | Yes |
+| Infrastructure exceptions (`AppException`, `ErrorMapper`, `guardResult`, `decodeResponse`) are used only by core and data, never by domain, presentation or shared | Yes |
 | Data imports nothing from `presentation/` | Yes |
 | Presentation imports nothing from `data/` and no Dio | Yes |
 | `core/` and `shared/` import no feature | Yes |
@@ -73,7 +74,8 @@ lib/
 │   ├── config/              Env: compile-time configuration and validation
 │   ├── constants/           Feature-agnostic constants, one file per topic
 │   ├── di/                  Core providers, root container, bootstrap
-│   ├── error/               Failure, ErrorReporter, global error handlers
+│   ├── error/               Exceptions, failures, error mapper, repository
+│   │                        guard, global error handlers
 │   ├── network/             Dio client, interceptors, network errors
 │   ├── router/              GoRouter set-up
 │   ├── security/            Secure storage and tokens
@@ -130,7 +132,7 @@ locator and no global mutable singleton.
 
 | Providers | File |
 | --- | --- |
-| Infrastructure (env, logger, error reporter, later Dio, storage, router) | `core/di/core_providers.dart` |
+| Infrastructure (env, logger, error reporter, error mapper, later Dio, storage, router) | `core/di/core_providers.dart` |
 | A feature's data sources, repositories and use cases | `features/<feature>/<feature>_providers.dart` |
 | A feature's controllers | Next to the controller in `presentation/controllers/` |
 | Root overrides | `core/di/app_container.dart` (`createAppContainer`) |
@@ -179,10 +181,8 @@ class ProfileController extends AsyncNotifier<Profile> {
   @override
   Future<Profile> build() async {
     final result = await ref.watch(getProfileProvider).call();
-    return switch (result) {
-      Ok(:final value) => value,
-      Err(:final failure) => throw failure,
-    };
+    // A Failure becomes AsyncValue.error holding the AppFailure.
+    return result.getOrThrow();
   }
 }
 ```
@@ -239,11 +239,12 @@ Build a feature from the inside out:
    - `dto/`: request and response classes matching the API exactly, using
      `json_serializable` (or Freezed with JSON).
    - `mappers/`: explicit conversion between DTOs and entities.
-   - `datasources/`: talk to Dio or storage; return DTOs; throw on
-     transport errors.
-   - `repositories/`: `AuthRepositoryImpl implements AuthRepository`; call
-     data sources, map DTOs to entities, catch expected errors and return
-     `Err(failure)`.
+   - `datasources/`: talk to Dio or storage; return DTOs; parse bodies with
+     `decodeResponse`; let transport errors propagate (Dio exceptions or
+     `AppException`s).
+   - `repositories/`: `AuthRepositoryImpl implements AuthRepository`; wrap
+     each operation in `guardResult`, which maps infrastructure errors to an
+     `AppFailure` and returns a `Result` (see [Errors](#errors)).
 3. **Wiring**: `<feature>_providers.dart` registers data sources,
    repositories (typed as the interface) and use cases.
 4. **Presentation**: controllers watch use-case providers and expose
@@ -293,16 +294,91 @@ Rules:
 
 ## Errors
 
-- **Expected failures** (offline, validation, rejected payment) are values:
-  repositories and use cases return `Result<T>`, either `Ok` or
-  `Err(Failure)`. Concrete `Failure` subclasses are added with the
-  error-handling layer.
-- **Unexpected errors** (bugs) throw. Anything that escapes is caught by the
-  global handlers and sent to the `ErrorReporter`.
+Three kinds of error, each with its own type and its own layer:
+
+| Kind | Type | Produced by | Seen by |
+| --- | --- | --- | --- |
+| Infrastructure exception | `AppException` (sealed): `NetworkException`, `UnauthorizedException`, `ForbiddenException`, `NotFoundException`, `ValidationException` (field errors), `ServerException` (incl. `invalidResponse`), `TimeoutException`, `CancelledException`, `UnknownException` | `ErrorMapper` from Dio errors, HTTP statuses, backend problem+json bodies and serialization errors | Core and data only |
+| Application failure | `AppFailure` (sealed): `NetworkFailure` (incl. timeouts), `UnauthorizedFailure`, `ForbiddenFailure`, `NotFoundFailure`, `ValidationFailure`, `ServerFailure`, `CancelledFailure`, `UnexpectedFailure` | Repositories, from an `AppException` (`toFailure()`) | Domain and presentation |
+| Domain failure | subclasses of `DomainFailure` (an `AppFailure`) | Features, for business rules | Domain and presentation |
+
+Programming errors (`Error`: `TypeError`, `StateError`, failed asserts) are
+none of these. They are not caught by repositories; they reach the global
+handlers.
+
+### Result
+
+`Result<T>` (`shared/models/result.dart`) is `Success<T>(value)` or
+`Failure<T>(AppFailure)`. Use an exhaustive `switch`, `fold`, `map` (value),
+`flatMap` (chain operations that can fail) or `getOrThrow` (in an
+`AsyncNotifier`, where the thrown failure becomes `AsyncValue.error`).
+
+### Repository convention
+
+```dart
+@override
+Future<Result<Profile>> getProfile() => guardResult(
+  () async => (await _remote.fetchProfile()).toEntity(),
+  mapper: _errorMapper,      // errorMapperProvider
+  reporter: _errorReporter,  // errorReporterProvider
+);
+```
+
+- Every public repository method returns `Future<Result<T>>` and never throws
+  an `AppException` or a Dio type.
+- `guardResult` catches `Exception`s only. It maps them with `ErrorMapper`,
+  converts them with `toFailure()`, and reports unknown failures,
+  unreadable responses and 5xx failures to the `ErrorReporter`. An
+  `AppFailure` thrown inside the action passes through; an `Error` is
+  rethrown.
+- Data sources decode bodies inside `decodeResponse(() => Dto.fromJson(json))`,
+  which turns a payload of the wrong shape into
+  `ServerException.invalidResponse`. Outside that call a `TypeError` stays a
+  bug.
+- A repository that needs a domain failure checks the backend code before
+  returning, for example
+  `Failure(failure: ServerFailure(code: 'SLOT_TAKEN')) => const Failure(SlotUnavailable())`.
+
+### Backend errors
+
+The backend answers errors with `application/problem+json` (RFC 9457).
+`BackendError.parse` reads `detail` / `title` as the developer message,
+`code` / `errorCode` as the backend code and `errors` / `invalid-params` as
+field errors (list or map). Status mapping:
+
+| Status | Exception |
+| --- | --- |
+| 400, 422, or any 4xx with field errors | `ValidationException` |
+| 401 | `UnauthorizedException` |
+| 403 | `ForbiddenException` |
+| 404, 410 | `NotFoundException` |
+| 408, 504 | `TimeoutException` |
+| any other (409, 429, 5xx, …) | `ServerException` with status and code |
+
+### Presentation
+
+Screens switch on the `AppFailure` type (and `code` where needed) to choose
+localized copy, following the design system's error-state rule: say what
+happened and the consequence, offer recovery, never blame the user.
+`message` and `cause` are developer-facing and are never shown.
+
+### Global handlers
+
+- `FlutterError.onError` → `ErrorReporter` (context `flutter`), then the
+  previous handler.
+- `PlatformDispatcher.instance.onError` → `ErrorReporter` (context
+  `platform`). The web engine never calls it, so:
+- `runGuardedZone` wraps the whole start-up (`main.dart`) and reports
+  uncaught asynchronous errors (context `zone`). Bindings are initialized
+  inside the zone. Errors before the reporter exists (invalid configuration)
+  go to the root zone, so a broken start-up fails loudly.
+- `ErrorWidget.builder`: in release and profile builds a widget whose build
+  throws renders as empty space, without exception text or stack trace; the
+  error is still reported. Debug builds keep the framework's error widget.
 
 ## Application initialization
 
-`main()` → `bootstrap()` → `runApp`:
+`main()` → `runGuardedZone(...)` → `bootstrap()` → `runApp`:
 
 1. `WidgetsFlutterBinding.ensureInitialized()`.
 2. `Env.fromEnvironment()` reads and validates the `--dart-define` values.
@@ -312,7 +388,9 @@ Rules:
    `envProvider` overridden. Infrastructure providers build lazily from it.
 4. `installGlobalErrorHandlers(...)` sends `FlutterError.onError` and
    `PlatformDispatcher.onError` to the `ErrorReporter` (logger by default;
-   override `errorReporterProvider` for a crash-reporting service).
+   override `errorReporterProvider` for a crash-reporting service), and
+   `installErrorWidgetBuilder()` keeps error details out of failed widgets
+   outside debug builds.
 5. `main` runs `ProxyCareApp` inside
    `UncontrolledProviderScope(container: ...)`.
 
@@ -329,6 +407,6 @@ is added as an extra step inside `bootstrap()`.
 | Extensions | `shared/extensions` | One file per extended type, named `<Type>X` |
 | Pure helpers | `core/utils` | Stateless, unit-tested |
 | Constants | `core/constants` | `abstract final class` namespaces, one file per topic |
-| Common interfaces (`ErrorReporter`, `Failure`) | `core/error` (and the matching `core/` folder) | Interface in pure Dart; implementation registered in `core/di` |
+| Common interfaces (`ErrorReporter`, `AppFailure`) | `core/error` (and the matching `core/` folder) | Interface in pure Dart; implementation registered in `core/di` |
 
 If something is used by only one feature, it stays in that feature.

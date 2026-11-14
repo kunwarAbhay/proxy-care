@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:logger/logger.dart';
 
 import '../config/env.dart';
+import '../error/error_mapper.dart';
 import '../error/error_reporter.dart';
 import '../error/logger_error_reporter.dart';
 
@@ -44,3 +45,8 @@ final loggerProvider = Provider<Logger>((ref) {
 final errorReporterProvider = Provider<ErrorReporter>(
   (ref) => LoggerErrorReporter(ref.watch(loggerProvider)),
 );
+
+/// Translates infrastructure errors (Dio, HTTP status, backend error bodies,
+/// serialization) into `AppException`s. Data sources and repositories read
+/// it; see `guardResult`.
+final errorMapperProvider = Provider<ErrorMapper>((ref) => const ErrorMapper());

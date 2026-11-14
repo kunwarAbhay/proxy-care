@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
@@ -65,5 +67,19 @@ void main() {
       PlatformDispatcher.instance.onError,
       same(previousPlatformHandler),
     );
+  });
+
+  test('runGuardedZone reports uncaught asynchronous errors', () async {
+    final reported = Completer<Object>();
+    when(() => reporter.report(any(), any(), context: 'zone')).thenAnswer(
+      (invocation) => reported.complete(invocation.positionalArguments.first!),
+    );
+
+    runGuardedZone(() {
+      // An unawaited failing future: on web only the zone sees it.
+      unawaited(Future<void>.error(StateError('async')));
+    }, reporter: () => reporter);
+
+    expect(await reported.future, isA<StateError>());
   });
 }

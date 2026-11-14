@@ -17,6 +17,17 @@ const _frameworkImports = [
   'package:flutter_secure_storage/',
 ];
 
+/// Files that know about `AppException`s and how they are produced. Only
+/// core and the data layer may use them; domain and presentation see
+/// `AppFailure`s inside a `Result`.
+const _infrastructureErrorImports = [
+  'core/error/app_exception.dart',
+  'core/error/error_mapper.dart',
+  'core/error/failure_mapper.dart',
+  'core/error/repository_guard.dart',
+  'core/error/serialization.dart',
+];
+
 /// The dependency rules from ARCHITECTURE.md, enforced on every file in lib/.
 final _rules = [
   ImportRule(
@@ -33,7 +44,7 @@ final _rules = [
     name: 'types used by the domain layer are pure Dart',
     appliesTo: RegExp(
       r'^lib/(shared/models/|core/config/|'
-      r'core/error/(failure|error_reporter)\.dart)',
+      r'core/error/(failure|error_reporter|app_exception)\.dart)',
     ),
     forbidden: _frameworkImports,
   ),
@@ -46,6 +57,13 @@ final _rules = [
     name: 'presentation depends on domain, not on data',
     appliesTo: RegExp(r'^lib/features/[^/]+/presentation/'),
     forbidden: const ['/data/', 'package:dio/'],
+  ),
+  ImportRule(
+    name: 'infrastructure exceptions stay in core and data',
+    appliesTo: RegExp(
+      r'^lib/(features/[^/]+/(domain|presentation)/|shared/)',
+    ),
+    forbidden: _infrastructureErrorImports,
   ),
   ImportRule(
     name: 'core and shared do not depend on features',
@@ -77,6 +95,30 @@ void main() {
       );
 
       expect(violations, isEmpty);
+    });
+
+    test('keeps infrastructure exceptions out of presentation', () {
+      const source = '''
+import 'package:proxy_care_client/core/error/failure.dart';
+import 'package:proxy_care_client/core/error/error_mapper.dart';
+''';
+
+      expect(
+        violationsOf(
+          'lib/features/auth/presentation/controllers/sign_in.dart',
+          source,
+          _rules,
+        ),
+        [contains('error_mapper.dart')],
+      );
+      expect(
+        violationsOf(
+          'lib/features/auth/data/repositories/auth_repository_impl.dart',
+          source,
+          _rules,
+        ),
+        isEmpty,
+      );
     });
 
     test('only applies a rule to matching paths', () {

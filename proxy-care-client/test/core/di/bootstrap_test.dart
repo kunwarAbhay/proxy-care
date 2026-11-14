@@ -26,5 +26,6 @@ void main() {
     );
     expect(FlutterError.onError, isNot(same(previousFlutterHandler)));
     expect(PlatformDispatcher.instance.onError, isNotNull);
+    expect(container.read(errorMapperProvider), isNotNull);
   });
 }
