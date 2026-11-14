@@ -298,6 +298,8 @@ void main() {
         () => parse(
           appEnv: 'production',
           apiBaseUrl: 'https://api.proxycare.test',
+          supabaseUrl: '',
+          supabasePublishableKey: '',
         ),
         throwsEnvError('SUPABASE_URL and SUPABASE_PUBLISHABLE_KEY'),
       );
@@ -334,20 +336,28 @@ void main() {
   });
 }
 
-/// Calls [Env.parse] with empty strings for every define not given.
+/// Calls [Env.parse] with empty strings for every define not given, except
+/// the Supabase settings, which default to valid values in staging and
+/// production (where they are required) so other tests stay focused.
 Env parse({
   String appEnv = '',
   String apiBaseUrl = '',
   String appName = '',
   String enableLogging = '',
   String featureFlags = '',
-  String supabaseUrl = '',
-  String supabasePublishableKey = '',
+  String? supabaseUrl,
+  String? supabasePublishableKey,
   bool requireExplicitEnvironment = false,
 }) {
+  final release = const {
+    'staging',
+    'production',
+  }.contains(appEnv.trim().toLowerCase());
   return Env.parse(
-    supabaseUrl: supabaseUrl,
-    supabasePublishableKey: supabasePublishableKey,
+    supabaseUrl:
+        supabaseUrl ?? (release ? 'https://project-ref.supabase.co' : ''),
+    supabasePublishableKey:
+        supabasePublishableKey ?? (release ? 'sb_publishable_test' : ''),
     appEnv: appEnv,
     apiBaseUrl: apiBaseUrl,
     appName: appName,
