@@ -183,9 +183,9 @@ void main() {
         isTrue,
       );
       expect(
-        (const ServerException(statusCode: 503).toFailure() as ServerFailure)
+        (const ServerException(statusCode: 500).toFailure() as ServerFailure)
             .statusCode,
-        503,
+        500,
       );
     });
   });
