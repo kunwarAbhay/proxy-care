@@ -1,10 +1,28 @@
 # core/network
 
-HTTP infrastructure shared by every feature: the configured Dio client,
-interceptors (auth header, logging, error mapping) and network error types.
+The HTTP layer, built on Dio. See ARCHITECTURE.md, "Networking".
 
-- Built from `Env.apiBaseUrl`; never hard-code URLs.
-- Exposed to features only through providers registered in `core/di`.
-- Dio errors are translated by `core/error/error_mapper.dart`; repositories
-  return them as `AppFailure`s, so Dio never reaches the domain layer.
-- Must not know about any specific feature or endpoint.
+- `api_client.dart`: `ApiClient`, the only API the data layer uses (GET,
+  POST, PUT, PATCH, DELETE, multipart upload, download). Throws only
+  `AppException`s.
+- `dio_api_client.dart`: the Dio implementation; maps Dio errors with
+  `ErrorMapper`.
+- `dio_factory.dart`: `BaseOptions` (environment base URL, 10 / 30 / 30 s
+  timeouts, JSON) and the interceptor order.
+- `interceptors/`: correlation ID, logging (with `LogRedactor`), auth,
+  retry.
+- `response_parser.dart`, `api_response.dart`: typed parsing of enveloped
+  and raw responses.
+- `request_options.dart`: per-request headers, timeouts, cancellation,
+  retry policy, idempotency key, `skipAuth`.
+- `authentication_session.dart`: the token source the auth interceptor
+  uses (`SignedOutSession` until the authentication milestone).
+- `pagination.dart`, `transfer.dart`, `idempotency_key.dart`,
+  `network_config.dart`.
+
+Rules:
+
+- Dio types stay in this folder and in `core/di/network_providers.dart`;
+  domain and presentation never import them (architecture test).
+- Nothing here knows about a feature or an endpoint.
+- Never log tokens, bodies or personal data.

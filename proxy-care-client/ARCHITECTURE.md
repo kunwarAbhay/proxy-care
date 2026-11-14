@@ -134,7 +134,8 @@ locator and no global mutable singleton.
 
 | Providers | File |
 | --- | --- |
-| Infrastructure (env, logger, error reporter, crash reporter, error mapper, later Dio, storage, router) | `core/di/core_providers.dart` |
+| Infrastructure (env, logger, error reporter, crash reporter, error mapper; later storage, router) | `core/di/core_providers.dart` |
+| Networking (authentication session, Dio, API client) | `core/di/network_providers.dart` |
 | A feature's data sources, repositories and use cases | `features/<feature>/<feature>_providers.dart` |
 | A feature's controllers | Next to the controller in `presentation/controllers/` |
 | Root overrides | `core/di/app_container.dart` (`createAppContainer`) |
@@ -419,6 +420,81 @@ a crash-reporting service.
 - `ErrorWidget.builder`: in release and profile builds a widget whose build
   throws renders as empty space, without exception text or stack trace; the
   error is still reported. Debug builds keep the framework's error widget.
+
+## Networking
+
+All HTTP goes through `ApiClient` (`apiClientProvider`), used only by data
+sources. It is built on Dio, but no Dio type leaves `core/network` and
+`core/di/network_providers.dart`.
+
+```dart
+// features/<feature>/data/datasources/profile_remote_source.dart
+Future<ProfileDto> fetchProfile() async {
+  final response = await _api.get(
+    '/v1/me',
+    decode: (json) => ProfileDto.fromJson(json! as Map<String, dynamic>),
+  );
+  return response.data;
+}
+```
+
+### Configuration
+
+`DioFactory` sets the base URL from `Env.apiBaseUrl`, timeouts of 10 s
+(connect), 30 s (receive) and 30 s (send; only for requests with a body,
+because on web Dio warns about a send timeout without one), JSON content
+type and `Accept: application/json`.
+
+### Interceptor order
+
+Dio runs request, response **and** error interceptors in the order they
+were added (checked against Dio's source and by `dio_factory_test.dart`):
+
+| # | Interceptor | Request phase | Response / error phase |
+| --- | --- | --- | --- |
+| 0 | `ImplyContentTypeInterceptor` (Dio) | content type | — |
+| 1 | `CorrelationIdInterceptor` | sets `X-Correlation-Id` (kept across retries) | — |
+| 2 | `LoggingInterceptor` | starts the timer | one line per attempt, including the 401 before a refresh |
+| 3 | `AuthInterceptor` | attaches `Authorization: Bearer` (unless `skipAuth`) | 401: refresh through `AuthenticationSession`, repeat once |
+| 4 | `RetryInterceptor` | — | transient failures: retry with backoff |
+
+A repeat (3) or retry (4) runs through the whole chain again, so it gets a
+fresh token and its own log line with the same correlation ID, and is marked
+so no interceptor starts another loop for it. Errors are mapped to
+`AppException`s once, by `DioApiClient`, after the chain.
+
+### Retries
+
+GET only, by default: connection errors, connection timeouts and HTTP 502,
+503, 504; at most 3 retries, 0.5 s / 1 s / 2 s apart. Never: cancelled
+requests, other methods (unless the request passes
+`RetryPolicy.always`, for example with an idempotency key), or
+`RetryPolicy.never`.
+
+### Responses
+
+`ResponseParser` reads the standard envelope (`success`, `data`, `error`,
+`meta`) and hands `data` to the typed decoder; `ResponseFormat.raw` hands
+the whole body instead, for endpoints without an envelope. Empty bodies
+decode as `null`; a wrong shape is `ServerException.invalidResponse`; an
+error envelope inside a 2xx is classified by its code. Non-2xx responses are
+mapped by `ErrorMapper` (see [Errors](#errors)).
+
+### Request options
+
+`ApiRequestOptions` carries per-request headers, receive / send timeouts,
+`RequestCancellation`, `RetryPolicy`, an idempotency key (sent as
+`Idempotency-Key`; generate with `IdempotencyKey.generate()`) and
+`skipAuth` (sign-in and token-refresh calls). Pagination uses
+`PageRequest` / `CursorPage` (provisional names: `cursor`, `limit`,
+`meta.nextCursor`).
+
+### Logging and privacy
+
+Each attempt is logged as method, path, status and duration. Hosts, query
+values, headers and bodies are not logged; debug builds add headers with
+secrets masked and query parameter names. Body logging is off and, if
+enabled, masks credentials and personal or health fields (`LogRedactor`).
 
 ## Application initialization
 

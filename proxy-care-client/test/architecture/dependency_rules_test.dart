@@ -38,6 +38,8 @@ final _rules = [
       'package:json_annotation/',
       '/data/',
       '/presentation/',
+      'core/network/',
+      'core/di/network_providers.dart',
     ],
   ),
   ImportRule(
@@ -57,7 +59,15 @@ final _rules = [
   ImportRule(
     name: 'presentation depends on domain, not on data',
     appliesTo: RegExp(r'^lib/features/[^/]+/presentation/'),
-    forbidden: const ['/data/', 'package:dio/'],
+    forbidden: const [
+      '/data/',
+      'package:dio/',
+      'core/network/api_client.dart',
+      'core/network/dio_',
+      'core/network/interceptors/',
+      'core/network/response_parser.dart',
+      'core/di/network_providers.dart',
+    ],
   ),
   ImportRule(
     name: 'infrastructure exceptions stay in core and data',

@@ -8,21 +8,26 @@
 ///
 /// Pure Dart: failures carry it into the domain and presentation layers.
 enum BackendErrorCode {
-  validationError('VALIDATION_ERROR'),
-  unauthenticated('UNAUTHENTICATED'),
-  forbidden('FORBIDDEN'),
-  notFound('NOT_FOUND'),
-  conflict('CONFLICT'),
-  businessRuleViolation('BUSINESS_RULE_VIOLATION'),
-  rateLimited('RATE_LIMITED'),
-  requestTimeout('REQUEST_TIMEOUT'),
-  internalError('INTERNAL_ERROR'),
-  serviceUnavailable('SERVICE_UNAVAILABLE');
+  validationError('VALIDATION_ERROR', 422),
+  unauthenticated('UNAUTHENTICATED', 401),
+  forbidden('FORBIDDEN', 403),
+  notFound('NOT_FOUND', 404),
+  conflict('CONFLICT', 409),
+  businessRuleViolation('BUSINESS_RULE_VIOLATION', 422),
+  rateLimited('RATE_LIMITED', 429),
+  requestTimeout('REQUEST_TIMEOUT', 408),
+  internalError('INTERNAL_ERROR', 500),
+  serviceUnavailable('SERVICE_UNAVAILABLE', 503);
 
-  const BackendErrorCode(this.wireName);
+  const BackendErrorCode(this.wireName, this.impliedStatus);
 
   /// The value sent by the backend.
   final String wireName;
+
+  /// The HTTP status this code corresponds to. Used only when an error
+  /// arrives with a 2xx status (`"success": false` in a 200 response), where
+  /// the transport status cannot classify it.
+  final int impliedStatus;
 
   /// The code for [wireName], or null for a missing or unknown code (the
   /// raw string is still kept on the exception and failure).
