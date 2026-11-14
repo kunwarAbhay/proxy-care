@@ -116,19 +116,22 @@ void main() {
       ]);
     });
 
-    test('the request reaches the adapter with ID and token attached', () async {
-      final harness = NetworkHarness(
-        session: FakeSession(token: 'access-1'),
-        responses: [respondJson(successEnvelope(null))],
-      );
+    test(
+      'the request reaches the adapter with ID and token attached',
+      () async {
+        final harness = NetworkHarness(
+          session: FakeSession(token: 'access-1'),
+          responses: [respondJson(successEnvelope(null))],
+        );
 
-      await harness.client.get('/v1/me', decode: ignoreBody);
+        await harness.client.get('/v1/me', decode: ignoreBody);
 
-      final sent = harness.adapter.requests.single;
-      expect(sent.headers['Authorization'], 'Bearer access-1');
-      expect(sent.headers['X-Correlation-Id'], isNotNull);
-      expect(harness.logs.single, contains(sent.headers['X-Correlation-Id']));
-    });
+        final sent = harness.adapter.requests.single;
+        expect(sent.headers['Authorization'], 'Bearer access-1');
+        expect(sent.headers['X-Correlation-Id'], isNotNull);
+        expect(harness.logs.single, contains(sent.headers['X-Correlation-Id']));
+      },
+    );
 
     test('logging records the 401 before auth recovers from it', () async {
       final harness = NetworkHarness(

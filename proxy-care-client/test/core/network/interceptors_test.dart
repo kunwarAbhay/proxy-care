@@ -134,7 +134,8 @@ void main() {
     test('retries a GET up to three times with exponential backoff', () async {
       final harness = NetworkHarness(
         responses: [
-          for (var i = 0; i < 4; i++) failWith(DioExceptionType.connectionError),
+          for (var i = 0; i < 4; i++)
+            failWith(DioExceptionType.connectionError),
         ],
       );
 
@@ -288,18 +289,21 @@ void main() {
       expect(harness.logs[2], contains('(retry 2)'));
     });
 
-    test('a refresh repeat that hits a 503 is retried, once per loop', () async {
-      final session = FakeSession(token: 'old', refreshedToken: 'new');
-      final harness = NetworkHarness(
-        session: session,
-        responses: [_status(401), _status(503), _ok()],
-      );
+    test(
+      'a refresh repeat that hits a 503 is retried, once per loop',
+      () async {
+        final session = FakeSession(token: 'old', refreshedToken: 'new');
+        final harness = NetworkHarness(
+          session: session,
+          responses: [_status(401), _status(503), _ok()],
+        );
 
-      await harness.client.get('/v1/me', decode: ignoreBody);
+        await harness.client.get('/v1/me', decode: ignoreBody);
 
-      expect(harness.adapter.requests, hasLength(3));
-      expect(session.refreshes, hasLength(1));
-    });
+        expect(harness.adapter.requests, hasLength(3));
+        expect(session.refreshes, hasLength(1));
+      },
+    );
   });
 
   group('CorrelationIdInterceptor', () {

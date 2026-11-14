@@ -254,34 +254,37 @@ void main() {
       expect(IdempotencyKey.generate(), isNot(key));
     });
 
-    test('error responses throw mapped AppExceptions, never Dio types', () async {
-      final harness = NetworkHarness(
-        responses: [
-          respondJson(
-            errorEnvelope(
-              'VALIDATION_ERROR',
-              fieldErrors: {
-                'mobile': ['Enter 10 digits'],
-              },
-              correlationId: 'abc-123',
+    test(
+      'error responses throw mapped AppExceptions, never Dio types',
+      () async {
+        final harness = NetworkHarness(
+          responses: [
+            respondJson(
+              errorEnvelope(
+                'VALIDATION_ERROR',
+                fieldErrors: {
+                  'mobile': ['Enter 10 digits'],
+                },
+                correlationId: 'abc-123',
+              ),
+              status: 422,
             ),
-            status: 422,
-          ),
-        ],
-      );
+          ],
+        );
 
-      await expectLater(
-        harness.client.post('/v1/users', body: const {}, decode: ignoreBody),
-        throwsA(
-          isA<ValidationException>()
-              .having((e) => e.fieldErrors['mobile'], 'mobile', [
-                'Enter 10 digits',
-              ])
-              .having((e) => e.correlationId, 'correlationId', 'abc-123')
-              .having((e) => e.cause, 'cause', isA<DioException>()),
-        ),
-      );
-    });
+        await expectLater(
+          harness.client.post('/v1/users', body: const {}, decode: ignoreBody),
+          throwsA(
+            isA<ValidationException>()
+                .having((e) => e.fieldErrors['mobile'], 'mobile', [
+                  'Enter 10 digits',
+                ])
+                .having((e) => e.correlationId, 'correlationId', 'abc-123')
+                .having((e) => e.cause, 'cause', isA<DioException>()),
+          ),
+        );
+      },
+    );
 
     test('a 503 after every retry becomes a ServerException', () async {
       final harness = NetworkHarness()
@@ -320,7 +323,9 @@ void main() {
 
     test('uploads files and fields as multipart/form-data', () async {
       final harness = NetworkHarness(
-        responses: [respondJson(successEnvelope({'id': 'f1', 'label': 'x'}))],
+        responses: [
+          respondJson(successEnvelope({'id': 'f1', 'label': 'x'})),
+        ],
       );
       final progress = <int>[];
 

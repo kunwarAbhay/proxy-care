@@ -80,33 +80,36 @@ FakeResponder respondJson(
   Object? json, {
   int status = 200,
   Map<String, List<String>> headers = const {},
-}) => (_) => ResponseBody.fromString(
-  jsonEncode(json),
-  status,
-  headers: {
-    Headers.contentTypeHeader: [Headers.jsonContentType],
-    ...headers,
-  },
-);
+}) =>
+    (_) => ResponseBody.fromString(
+      jsonEncode(json),
+      status,
+      headers: {
+        Headers.contentTypeHeader: [Headers.jsonContentType],
+        ...headers,
+      },
+    );
 
 /// Responds with raw [text].
 FakeResponder respondText(
   String text, {
   int status = 200,
   String contentType = 'text/plain',
-}) => (_) => ResponseBody.fromString(
-  text,
-  status,
-  headers: {
-    Headers.contentTypeHeader: [contentType],
-  },
-);
+}) =>
+    (_) => ResponseBody.fromString(
+      text,
+      status,
+      headers: {
+        Headers.contentTypeHeader: [contentType],
+      },
+    );
 
 /// Responds with raw [bytes].
 FakeResponder respondBytes(
   List<int> bytes, {
   Map<String, List<String>> headers = const {},
-}) => (_) => ResponseBody.fromBytes(bytes, 200, headers: headers);
+}) =>
+    (_) => ResponseBody.fromBytes(bytes, 200, headers: headers);
 
 /// Fails the attempt like a transport error of [type].
 FakeResponder failWith(DioExceptionType type) =>
