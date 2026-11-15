@@ -286,6 +286,27 @@ void main() {
           .first;
       expect((pill.decoration! as ShapeDecoration).color, PcPalette.error500);
     });
+
+    testWidgets('tag and count badge hug their content in a column', (
+      tester,
+    ) async {
+      await pumpThemed(
+        tester,
+        const SizedBox(
+          width: 300,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              PcTag(label: 'Fixed'),
+              PcCountBadge(count: 3),
+            ],
+          ),
+        ),
+      );
+
+      expect(tester.getSize(find.byType(PcTag)).width, lessThan(100));
+      expect(tester.getSize(find.byType(PcCountBadge)).width, 20);
+    });
   });
 
   group('banners', () {

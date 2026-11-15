@@ -108,17 +108,20 @@ class PcTag extends StatelessWidget {
     return Container(
       height: PcSizes.tag,
       padding: const EdgeInsets.symmetric(horizontal: PcSpacing.space2),
-      alignment: Alignment.center,
       decoration: BoxDecoration(
         color: colors.container,
         borderRadius: const BorderRadius.all(Radius.circular(PcRadii.md)),
       ),
-      child: Text(
-        label,
-        maxLines: 1,
-        style: PcTypeScale.overline.copyWith(
-          color: textColor,
-          letterSpacing: 0,
+      // widthFactor 1: hug the label instead of filling a loose row.
+      child: Center(
+        widthFactor: 1,
+        child: Text(
+          label,
+          maxLines: 1,
+          style: PcTypeScale.overline.copyWith(
+            color: textColor,
+            letterSpacing: 0,
+          ),
         ),
       ),
     );
@@ -147,16 +150,18 @@ class PcCountBadge extends StatelessWidget {
         height: PcSizes.countBadge,
         constraints: const BoxConstraints(minWidth: PcSizes.countBadge),
         padding: const EdgeInsets.symmetric(horizontal: PcSpacing.space1),
-        alignment: Alignment.center,
         decoration: ShapeDecoration(
           color: colors.errorTone.accent,
           shape: const StadiumBorder(),
         ),
-        child: Text(
-          '$count',
-          style: PcTypeScale.overline.copyWith(
-            color: colors.onPrimary,
-            letterSpacing: 0,
+        child: Center(
+          widthFactor: 1,
+          child: Text(
+            '$count',
+            style: PcTypeScale.overline.copyWith(
+              color: colors.onPrimary,
+              letterSpacing: 0,
+            ),
           ),
         ),
       ),
