@@ -162,6 +162,7 @@ Output goes to `build/web/`.
 | `make test` | `flutter test` |
 | `make check-env [ENV=...]` | Validates `config/env/<ENV>.json` |
 | `make build-web [ENV=...]` | Validates the config, then builds a release web bundle |
+| `make build-showcase [BASE_HREF=/repo/]` | Release web build of the widget showcase (`config/env/showcase.json`) |
 
 ## Static analysis
 
@@ -196,6 +197,15 @@ are excluded from analysis.
 CI does not depend on downloaded artifacts: everything it needs is in the
 repository.
 
+`.github/workflows/pages.yml` publishes the widget showcase (below) to
+GitHub Pages on every push to `main` that touches `proxy-care-client/`, and
+on demand: it repeats the checks above (`make get-locked`, `make gen`,
+`make format-check`, `make analyze`, `make test`), runs
+`make build-showcase BASE_HREF=/<repository>/`, adds a `404.html` that
+forwards path links to the app's hash URLs, and deploys with
+`actions/deploy-pages`. It needs Pages enabled with **Source: GitHub
+Actions** in the repository settings.
+
 ## Project structure
 
 ```text
@@ -209,15 +219,19 @@ proxy-care-client/
 ├── lib/
 │   ├── main.dart           Entry point: bootstrap, then runApp
 │   ├── app.dart            Root widget: theme, localization, router
-│   ├── app_routes.dart     Feature route modules (none yet)
+│   ├── app_routes.dart     Feature route modules (none yet) and the
+│   │                       dev-only widget showcase switch
 │   ├── core/               Infrastructure: config, di, error, l10n, network,
 │   │                       router, security, theme, utils, widgets, services,
 │   │                       constants
 │   ├── features/auth/      Empty data / domain / presentation layer folders
+│   ├── features/widget_showcase/
+│   │                       Dev-only /widget-showcase component preview
 │   └── shared/             Cross-feature models, widgets, extensions
 ├── test/                   Mirrors lib/, plus architecture, fixtures, helpers,
 │                           mocks
 ├── tool/check_env.dart     Validates a config file from the command line
+├── tool/github_pages/      404.html redirect for the GitHub Pages showcase
 ├── web/                    Web entry files and icons
 ├── analysis_options.yaml
 ├── l10n.yaml               flutter gen-l10n configuration
@@ -245,6 +259,22 @@ token and component to code and records how each ambiguity in the spec was
 handled. The design system defines a light theme only, in two densities:
 standard (family app) and comfortable (caretaker app). The web icons are
 plain placeholders until brand artwork exists.
+
+### Widget showcase
+
+`/widget-showcase` (`lib/features/widget_showcase/`) shows every component in
+`lib/shared/widgets/` with its variants, sizes and states, grouped by
+category, with a switch to preview either density. It is a development
+preview only: interactions use in-memory state and call no API.
+
+- It is registered only when `FEATURE_FLAGS` contains `widget_showcase` and
+  `APP_ENV` is not `production` (`WidgetShowcaseRoutes.isEnabled`). The
+  development, staging and production configs leave it off.
+- `config/env/showcase.json` is the development config with the flag on:
+  `flutter run -d chrome --dart-define-from-file=config/env/showcase.json`,
+  then open `/#/widget-showcase`.
+- Published by `pages.yml` at
+  `https://<owner>.github.io/<repository>/#/widget-showcase`.
 
 ## MVP decisions
 

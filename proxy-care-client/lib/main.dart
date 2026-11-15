@@ -14,7 +14,11 @@ void main() {
   runGuardedZone(
     () async {
       final container = await bootstrap(
-        overrides: [routeModulesProvider.overrideWithValue(appRouteModules)],
+        overrides: [
+          routeModulesProvider.overrideWith(
+            (ref) => enabledRouteModules(ref.watch(envProvider)),
+          ),
+        ],
       );
       reporter = container.read(errorReporterProvider);
       runApp(

@@ -9,6 +9,9 @@
 #   make test                     Run all tests
 #   make check-env [ENV=...]      Validate config/env/$(ENV).json
 #   make build-web [ENV=...]      Validate config, then release web build
+#   make build-showcase [BASE_HREF=/repo/]
+#                                 Release web build of the widget showcase
+#                                 (config/env/showcase.json) at BASE_HREF
 #
 # ENV defaults to development. Other environments read config/env/<ENV>.json,
 # e.g. `make build-web ENV=production` uses config/env/production.json.
@@ -20,8 +23,10 @@ FLUTTER ?= flutter
 DART ?= dart
 ENV ?= development
 DEFINES_FILE ?= config/env/$(ENV).json
+BASE_HREF ?= /
 
-.PHONY: get get-locked gen format format-check analyze test check-env build-web
+.PHONY: get get-locked gen format format-check analyze test check-env build-web \
+	build-showcase
 
 get:
 	$(FLUTTER) pub get
@@ -50,3 +55,11 @@ check-env:
 
 build-web: check-env
 	$(FLUTTER) build web --release --dart-define-from-file=$(DEFINES_FILE)
+
+# The widget showcase is a development preview: it never uses a staging or
+# production config (WidgetShowcaseRoutes refuses production anyway).
+build-showcase:
+	$(DART) run tool/check_env.dart config/env/showcase.json
+	$(FLUTTER) build web --release \
+		--dart-define-from-file=config/env/showcase.json \
+		--base-href $(BASE_HREF)

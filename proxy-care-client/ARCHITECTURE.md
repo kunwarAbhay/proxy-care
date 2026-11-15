@@ -560,10 +560,11 @@ and [docs/deep-linking.md](docs/deep-linking.md).
    override `errorReporterProvider` for a crash-reporting service), and
    `installErrorWidgetBuilder()` keeps error details out of failed widgets
    outside debug builds.
-5. `main` passes `routeModulesProvider.overrideWithValue(appRouteModules)`
-   to `bootstrap(overrides:)` and runs `ProxyCareApp` inside
-   `UncontrolledProviderScope(container: ...)`; `ProxyCareApp` uses
-   `MaterialApp.router` with `routerProvider`.
+5. `main` passes `routeModulesProvider.overrideWith(...)`, built from
+   `enabledRouteModules(env)` (the feature modules plus, when enabled, the
+   development-only widget showcase), to `bootstrap(overrides:)` and runs
+   `ProxyCareApp` inside `UncontrolledProviderScope(container: ...)`;
+   `ProxyCareApp` uses `MaterialApp.router` with `routerProvider`.
 
 Bootstrap contains no feature logic. Future infrastructure that must be ready
 before the first frame (for example restoring a session from secure storage)
