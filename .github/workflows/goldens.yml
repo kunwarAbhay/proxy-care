@@ -1,0 +1,44 @@
+name: Bless goldens
+
+# Regenerates golden images on the same runner and Flutter version as CI and
+# uploads them as an artifact. Run it by hand on a branch after an intended
+# visual change, review every image against the design system, then commit
+# the images. CI never blesses goldens: it only compares.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  goldens:
+    name: Bless golden images
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: proxy-care-client
+    steps:
+      - name: Check out
+        uses: actions/checkout@v7
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: 3.50.x
+          cache: true
+
+      - name: Install dependencies
+        run: make get-locked
+
+      - name: Regenerate goldens
+        run: make goldens
+
+      - name: Upload golden images
+        uses: actions/upload-artifact@v4
+        with:
+          name: goldens
+          path: proxy-care-client/test/**/goldens/*.png
+          if-no-files-found: error
