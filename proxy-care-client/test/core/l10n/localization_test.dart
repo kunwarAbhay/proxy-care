@@ -43,9 +43,9 @@ void main() {
   });
 
   test('every ARB message has a description (translator context)', () {
-    final arb =
-        jsonDecode(File('lib/core/l10n/arb/app_en.arb').readAsStringSync())
-            as Map<String, Object?>;
+    final arb = jsonDecode(
+      File('lib/core/l10n/arb/app_en.arb').readAsStringSync(),
+    ) as Map<String, Object?>;
     final messages = arb.keys.where((key) => !key.startsWith('@'));
 
     for (final key in messages) {

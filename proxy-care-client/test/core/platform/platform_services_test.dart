@@ -136,7 +136,11 @@ void main() {
       monitor.controller.add(ConnectivityStatus.online);
       await _settle();
 
-      expect(seen, [null, ConnectivityStatus.offline, ConnectivityStatus.online]);
+      expect(seen, [
+        null,
+        ConnectivityStatus.offline,
+        ConnectivityStatus.online,
+      ]);
     });
   });
 
@@ -228,17 +232,24 @@ void main() {
       push.refreshes.add('token-2');
       await _settle();
 
-      expect(registry.calls, ['register token-1 android', 'register token-2 android']);
+      expect(registry.calls, [
+        'register token-1 android',
+        'register token-2 android',
+      ]);
     });
 
     test('a restored session registers at start-up', () async {
-      start(auth: const Authenticated(user: AuthenticatedUser(id: 'u1')));
+      start(
+        auth: const Authenticated(user: AuthenticatedUser(id: 'u1')),
+      );
       await _settle();
       expect(registry.calls, ['register token-1 android']);
     });
 
     test('ending the session deletes and unregisters the token', () async {
-      start(auth: const Authenticated(user: AuthenticatedUser(id: 'u1')));
+      start(
+        auth: const Authenticated(user: AuthenticatedUser(id: 'u1')),
+      );
       await _settle();
 
       session.emit(const SessionExpired());
@@ -247,7 +258,10 @@ void main() {
       await _settle();
 
       expect(push.deleted, 1);
-      expect(registry.calls, ['register token-1 android', 'unregister token-1']);
+      expect(registry.calls, [
+        'register token-1 android',
+        'unregister token-1',
+      ]);
     });
 
     test('taps at launch and while running are handed to the router', () async {

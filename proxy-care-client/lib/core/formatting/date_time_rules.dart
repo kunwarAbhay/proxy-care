@@ -40,9 +40,13 @@ final class ServiceTimeZone {
   DateTime toWallClock(DateTime instant) => instant.toUtc().add(offset);
 
   /// The instant at [hour]:[minute] on the civil [date] in this zone.
-  DateTime instantAt(DateTime date, int hour, int minute) =>
-      DateTime.utc(date.year, date.month, date.day, hour, minute)
-          .subtract(offset);
+  DateTime instantAt(DateTime date, int hour, int minute) => DateTime.utc(
+    date.year,
+    date.month,
+    date.day,
+    hour,
+    minute,
+  ).subtract(offset);
 }
 
 /// Converting dates and instants to and from the API.

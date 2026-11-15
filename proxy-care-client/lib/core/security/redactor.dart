@@ -87,8 +87,10 @@ final class Redactor {
   ];
 
   /// [text] with tokens, email addresses and long numbers masked.
-  String text(String text) =>
-      _textPatterns.fold(text, (result, pattern) => result.replaceAll(pattern, mask));
+  String text(String text) => _textPatterns.fold(
+    text,
+    (result, pattern) => result.replaceAll(pattern, mask),
+  );
 
   /// A copy of a JSON value with every sensitive field masked, at any
   /// depth. Only used when body logging is switched on explicitly.

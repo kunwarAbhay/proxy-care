@@ -25,7 +25,7 @@ enum AppLifecyclePhase {
 AppLifecyclePhase phaseOf(AppLifecycleState state) => switch (state) {
   AppLifecycleState.resumed => AppLifecyclePhase.foreground,
   AppLifecycleState.inactive => AppLifecyclePhase.inactive,
-  AppLifecycleState.hidden || AppLifecycleState.paused =>
-    AppLifecyclePhase.background,
+  AppLifecycleState.hidden ||
+  AppLifecycleState.paused => AppLifecyclePhase.background,
   AppLifecycleState.detached => AppLifecyclePhase.detached,
 };

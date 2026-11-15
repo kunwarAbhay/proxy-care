@@ -190,6 +190,12 @@ abstract class AppLocalizations {
   /// **'Digit {position} of {length}'**
   String a11yOtpDigit(int position, int length);
 
+  /// A duration in whole hours, e.g. the caretaker's booked block ('3 hours').
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 hour} other{{count} hours}}'**
+  String durationHours(int count);
+
   /// Screen-reader label of the step progress bar in multi-step flows.
   ///
   /// In en, this message translates to:

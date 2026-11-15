@@ -56,7 +56,12 @@ void main() {
     });
 
     test('drops events with invalid names', () {
-      for (final name in ['BookingConfirmed', 'booking-confirmed', '', 'x' * 41]) {
+      for (final name in [
+        'BookingConfirmed',
+        'booking-confirmed',
+        '',
+        'x' * 41,
+      ]) {
         analytics.logEvent(name);
       }
       expect(inner.events, isEmpty);

@@ -36,6 +36,9 @@ void main() {
       isA<Unauthenticated>(),
     );
     // Date formatting data is loaded.
-    expect(container.read(appFormattersProvider).date(DateTime(2026)), '1 Jan 2026');
+    expect(
+      container.read(appFormattersProvider).date(DateTime(2026)),
+      '1 Jan 2026',
+    );
   });
 }

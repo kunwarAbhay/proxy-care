@@ -32,7 +32,10 @@ final class NoopAnalyticsService implements AnalyticsService {
 /// parameters like API fields.
 final class FilteringAnalyticsService implements AnalyticsService {
   /// Creates the filter in front of [inner].
-  const FilteringAnalyticsService(this.inner, {this.redactor = const Redactor()});
+  const FilteringAnalyticsService(
+    this.inner, {
+    this.redactor = const Redactor(),
+  });
 
   /// Longest event name or parameter key.
   static const maxNameLength = 40;
@@ -70,7 +73,8 @@ final class FilteringAnalyticsService implements AnalyticsService {
 
   bool _isSafeValue(Object value) => switch (value) {
     num() || bool() => true,
-    final String text => text.length <= maxValueLength && redactor.text(text) == text,
+    final String text =>
+      text.length <= maxValueLength && redactor.text(text) == text,
     _ => false,
   };
 }

@@ -89,7 +89,8 @@ final pushNotificationCoordinatorProvider =
         messaging: ref.watch(pushMessagingServiceProvider),
         registry: ref.watch(deviceTokenRegistryProvider),
         platform: ref.watch(appPlatformProvider),
-        open: (payload) => ref.read(notificationNavigatorProvider).open(payload),
+        open: (payload) =>
+            ref.read(notificationNavigatorProvider).open(payload),
         reporter: ref.watch(errorReporterProvider),
       );
       ref.watch(sessionCleanupProvider).register('push', coordinator.signedOut);
