@@ -93,7 +93,10 @@ Future<_App> _launch(
   addTearDown(container.dispose);
 
   await tester.pumpWidget(
-    UncontrolledProviderScope(container: container, child: const ProxyCareApp()),
+    UncontrolledProviderScope(
+      container: container,
+      child: const ProxyCareApp(),
+    ),
   );
   await tester.pumpAndSettle();
 
@@ -114,7 +117,10 @@ void main() {
       AppEnvironment.development,
     );
     expect(app.container.read(appFormattersProvider).rupees(109900), '₹1,099');
-    expect(app.container.read(authenticationStateProvider), isA<Unauthenticated>());
+    expect(
+      app.container.read(authenticationStateProvider),
+      isA<Unauthenticated>(),
+    );
     expect(app.uri.toString(), '/public');
     expect(find.text('public'), findsOneWidget);
   });
@@ -195,12 +201,13 @@ void main() {
     ]);
     await tester.runAsync(
       () => expectLater(
-        app.container
-            .read(apiClientProvider)
-            .get('/v1/me', decode: ignoreBody),
+        app.container.read(apiClientProvider).get('/v1/me', decode: ignoreBody),
         throwsAppException<UnauthorizedException>(),
       ),
     );
-    expect(app.http.requests.last.headers.containsKey('Authorization'), isFalse);
+    expect(
+      app.http.requests.last.headers.containsKey('Authorization'),
+      isFalse,
+    );
   });
 }

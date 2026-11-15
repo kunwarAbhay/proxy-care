@@ -161,26 +161,29 @@ void main() {
       expect(adapter.requests, hasLength(2));
     });
 
-    test('after rotation, later requests use the new token, no refresh', () async {
-      final original = current!.accessToken;
-      final renewed = fakeSession(tokenId: 'b');
-      when(() => auth.refreshSession()).thenAnswer((_) async {
-        current = renewed;
-        return AuthResponse(session: renewed);
-      });
-      final (client, adapter) = _stack(session);
-      adapter.fallback = _acceptsOnly(renewed.accessToken);
+    test(
+      'after rotation, later requests use the new token, no refresh',
+      () async {
+        final original = current!.accessToken;
+        final renewed = fakeSession(tokenId: 'b');
+        when(() => auth.refreshSession()).thenAnswer((_) async {
+          current = renewed;
+          return AuthResponse(session: renewed);
+        });
+        final (client, adapter) = _stack(session);
+        adapter.fallback = _acceptsOnly(renewed.accessToken);
 
-      await client.get('/v1/me', decode: ignoreBody);
-      await client.get('/v1/bookings', decode: ignoreBody);
+        await client.get('/v1/me', decode: ignoreBody);
+        await client.get('/v1/bookings', decode: ignoreBody);
 
-      verify(() => auth.refreshSession()).called(1);
-      expect(adapter.requests.map((r) => r.headers['Authorization']), [
-        'Bearer $original',
-        'Bearer ${renewed.accessToken}',
-        'Bearer ${renewed.accessToken}',
-      ]);
-    });
+        verify(() => auth.refreshSession()).called(1);
+        expect(adapter.requests.map((r) => r.headers['Authorization']), [
+          'Bearer $original',
+          'Bearer ${renewed.accessToken}',
+          'Bearer ${renewed.accessToken}',
+        ]);
+      },
+    );
 
     test('a rejected refresh expires the session and clears storage', () async {
       when(() => auth.refreshSession()).thenThrow(
