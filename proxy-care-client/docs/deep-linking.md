@@ -1,10 +1,17 @@
 # Deep linking
 
-The app is web-only for now: there are no `android/` or `ios/` folders yet
-(MVP decision 4 is deferred). This document is the integration plan for
-when they are added. Nothing below invents a domain: `<APP_LINK_DOMAIN>`
-stands for a domain Proxy Care owns and serves over HTTPS, and every value in
-angle brackets must be filled in by its owner.
+Android App Links and iOS Universal Links are wired in the native
+projects with a **placeholder host**, `app-links.invalid` (the `.invalid`
+top-level domain is reserved and never resolves), because no domain is
+owned yet. Nothing below invents a domain: `<APP_LINK_DOMAIN>` stands for a
+domain Proxy Care owns and serves over HTTPS, and every value in angle
+brackets must be filled in by its owner.
+
+| Where | Placeholder today | Replace with |
+| --- | --- | --- |
+| Android intent filter host | `appLinkHost` in `android/app/build.gradle.kts` (default `app-links.invalid`, overridable with `-PappLinkHost=…`) | `<APP_LINK_DOMAIN>` |
+| iOS `Runner.entitlements` | `applinks:app-links.invalid` | `applinks:<APP_LINK_DOMAIN>` |
+| `RouterOptions.deepLinks.allowedHosts` | empty | `{'<APP_LINK_DOMAIN>'}` |
 
 ## What the app already does
 
@@ -34,22 +41,12 @@ URL schemes (`proxycare://`) are not used: any app can claim them.
 
 ## Android App Links
 
-In `android/app/src/main/AndroidManifest.xml`, inside the main activity:
-
-```xml
-<!-- Lets Flutter hand incoming links to the router (default on recent
-     Flutter versions; set it explicitly). -->
-<meta-data android:name="flutter_deeplinking_enabled" android:value="true" />
-
-<intent-filter android:autoVerify="true">
-  <action android:name="android.intent.action.VIEW" />
-  <category android:name="android.intent.category.DEFAULT" />
-  <category android:name="android.intent.category.BROWSABLE" />
-  <data android:scheme="https" android:host="<APP_LINK_DOMAIN>" />
-  <!-- Optionally restrict to the paths the app handles: -->
-  <!-- <data android:pathPrefix="/<path-prefix>" /> -->
-</intent-filter>
-```
+Configured in `android/app/src/main/AndroidManifest.xml` (main activity):
+`flutter_deeplinking_enabled` and an `autoVerify` intent filter for
+`https://${appLinkHost}`. To go live, set `appLinkHost` to the domain
+(edit the default in `app/build.gradle.kts`, or pass
+`-PappLinkHost=<APP_LINK_DOMAIN>`), optionally restrict paths with
+`<data android:pathPrefix="/<path-prefix>" />`, and verify the domain:
 
 Domain verification:
 
@@ -78,10 +75,16 @@ Domain verification:
 
 ## iOS Universal Links
 
+`FlutterDeepLinkingEnabled` is set in `Info.plist` and
+`ios/Runner/Runner.entitlements` (referenced by every Runner build
+configuration) declares the placeholder domain. To go live:
+
 1. Enable **Associated Domains** for the App ID (`<APPLE_TEAM_ID>.<IOS_BUNDLE_ID>`)
-   in the Apple Developer portal.
-2. In Xcode (Runner → Signing & Capabilities → Associated Domains), add
-   `applinks:<APP_LINK_DOMAIN>`. This writes `ios/Runner/Runner.entitlements`:
+   in the Apple Developer portal. Until then, signing for a device fails
+   with the placeholder entitlement: remove the entry locally if you need a
+   device build first.
+2. Replace the entry in `ios/Runner/Runner.entitlements` (or in Xcode,
+   Runner → Signing & Capabilities → Associated Domains):
 
    ```xml
    <key>com.apple.developer.associated-domains</key>
@@ -92,7 +95,7 @@ Domain verification:
 
    Use one entitlements file per build configuration if staging uses a
    different domain.
-3. In `ios/Runner/Info.plist`, let Flutter hand links to the router:
+3. `ios/Runner/Info.plist` already lets Flutter hand links to the router:
 
    ```xml
    <key>FlutterDeepLinkingEnabled</key>
@@ -126,7 +129,7 @@ hosting. The app uses Flutter's default hash URLs (`/#/path`). Switching to
 path URLs (`usePathUrlStrategy()`) needs the host to serve `index.html` for
 every path; decide this with hosting.
 
-## Checklist when the native targets are added
+## Checklist to go live
 
 - [ ] Domain chosen and owned; `<APP_LINK_DOMAIN>` replaced everywhere.
 - [ ] `allowedHosts` set per environment.

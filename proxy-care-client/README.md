@@ -1,68 +1,174 @@
 # Proxy Care client
 
-Flutter Web client for **Proxy Care**, an app where families book a vetted
-caretaker to accompany a family member to hospital visits (OPD, diagnostics,
-day-care procedures, admission and discharge), and caretakers run the visit.
+Flutter client foundation for **Proxy Care**, a service where families book a
+vetted caretaker to accompany a family member to hospital visits (OPD,
+diagnostics, day-care procedures, admission and discharge), and caretakers
+run the visit.
 
-This package is built in milestones (project set-up, architecture and
-dependency injection, design system, error handling so far). There are no
-screens yet; the app starts, validates its configuration and renders nothing.
+This is the **starter foundation**: configuration, architecture,
+dependency injection, networking, error handling, Supabase authentication,
+routing, the design system, cross-cutting services, tests and CI. It
+contains **no application screens and no business features**. The app
+starts, validates its configuration and shows a blank router placeholder.
+The only screen is the development-only widget showcase (below).
 
-See [MVP decisions](#mvp-decisions) for the decisions that shape the
-project.
+## Contents
+
+- [Supported platforms](#supported-platforms)
+- [Toolchain](#toolchain) and [dependencies](#dependencies)
+- [Architecture overview](#architecture-overview) and [folder structure](#folder-structure)
+- [Environment configuration](#environment-configuration)
+- [Local development](#local-development) and [build commands](#build-commands)
+- [API integration](#api-integration), [error handling](#error-handling),
+  [authentication](#authentication), [secure storage](#secure-storage)
+- [Routing](#routing) and [deep links](#deep-links)
+- [State management](#state-management)
+- [Design system](#design-system)
+- [Testing](#testing) and [continuous integration](#continuous-integration)
+- [Android configuration](#android-configuration) and [iOS configuration](#ios-configuration)
+- [MVP decisions](#mvp-decisions)
+
+Detailed documents: [ARCHITECTURE.md](ARCHITECTURE.md),
+[AUTHENTICATION.md](AUTHENTICATION.md), [SECURITY.md](SECURITY.md),
+[TESTING.md](TESTING.md), [docs/feature-guide.md](docs/feature-guide.md),
+[docs/navigation.md](docs/navigation.md),
+[docs/deep-linking.md](docs/deep-linking.md),
+[docs/observability.md](docs/observability.md),
+[docs/design-system-mapping.md](docs/design-system-mapping.md).
+
+## Supported platforms
+
+| Platform | Status |
+| --- | --- |
+| Android | Supported. CI builds a release APK and App Bundle (debug-key signed). |
+| iOS | Supported. CI builds an unsigned release build. |
+| Web | Supported (development and the widget showcase). CI builds a release bundle. |
+
+Android and iOS were added in Milestone 10 with placeholder identifiers
+(`com.proxycare.client`); see the platform sections before any store
+release.
 
 ## Toolchain
 
 | Tool | Version |
 | --- | --- |
-| Flutter | 3.50.x, stable channel (CI uses the newest 3.50 patch) |
-| Dart | 3.14 (bundled with Flutter 3.50) |
-| Platform | Web only for now (the move to Android and iOS is deferred) |
+| Flutter | **3.50.0** (stable), pinned in all workflows |
+| Dart | 3.14 (bundled with Flutter 3.50.0) |
+| Android | Android Gradle Plugin 9.3.1, Gradle 9.5.0, Kotlin 2.4.20, JDK **21**; compile/target/min SDK from the Flutter defaults |
+| iOS | Xcode (latest stable on the CI runner), iOS 15.0 minimum |
 
 `pubspec.yaml` requires Dart `^3.14.0` and Flutter `>=3.50.0`.
 
 ## Dependencies
 
-| Package | Constraint | Purpose |
+Versions are the ones resolved in the committed `pubspec.lock`.
+
+| Package | Version | Purpose |
 | --- | --- | --- |
-| `go_router` | ^18.1.1 | Declarative routing |
-| `flutter_riverpod` | ^3.5.0 | State management and dependency injection |
-| `connectivity_plus` | ^7.3.2 | Network connection status (not reachability) |
-| `dio` | ^5.11.1 | HTTP client |
-| `flutter_secure_storage` | ^11.2.0 | Secure storage for the Supabase session (Keystore / Keychain / WebCrypto) |
-| `supabase_flutter` | ^2.18.3 | Supabase Auth (identity provider); sessions persisted through secure storage |
-| `freezed_annotation` | ^3.1.0 | Annotations for immutable models (Freezed) |
-| `json_annotation` | ^4.12.0 | Annotations for JSON serialization |
-| `logger` | ^2.8.0 | Logging |
-| `intl` | ^0.20.3 | Dates, numbers and currency formatting; used by the generated localizations |
-| `flutter_localizations` | SDK | Localization delegates for ARB-based strings |
-| `material_ui` | ^1.11.0 | Material widgets; Flutter 3.50 deprecates `package:flutter/material.dart` in favour of this package |
+| `flutter_riverpod` | 3.5.0 | State management and dependency injection |
+| `go_router` | 18.1.4 | Declarative routing, deep links |
+| `dio` | 5.11.1 | HTTP client |
+| `supabase_flutter` | 2.18.3 | Supabase Auth (identity provider) |
+| `flutter_secure_storage` | 11.2.0 | Secure session storage (Keystore / Keychain / WebCrypto) |
+| `connectivity_plus` | 7.3.2 | Network connection status (not reachability) |
+| `freezed_annotation` | 3.1.0 | Immutable models (Freezed) |
+| `json_annotation` | 4.12.0 | JSON serialization |
+| `logger` | 2.8.0 | Console output behind `AppLogger` |
+| `intl` | 0.20.3 | Date, number and currency formatting; localizations |
+| `material_ui` | 1.11.0 | Material widgets (Flutter 3.50 moves Material to this package) |
+| `flutter_localizations` | SDK | Localization delegates |
 
-Development:
+Development: `build_runner` 2.17.1, `freezed` 4.0.3, `json_serializable`
+6.15.2, `mocktail` 1.0.5, `flutter_lints` 6.0.0, `flutter_test` (SDK).
+Riverpod code generation is not used; providers are written by hand.
 
-| Package | Constraint | Purpose |
+`pubspec.lock` is committed. `make get` updates it; commit the change with
+the `pubspec.yaml` change that caused it. CI fails if the lockfile or any
+generated file is out of date. Dependency rules are in
+[SECURITY.md](SECURITY.md#dependency-security).
+
+## Architecture overview
+
+Feature-first Clean Architecture with three layers per feature
+(presentation → domain ← data) on top of a shared `core` (infrastructure)
+and `shared` (models, design-system widgets). Domain code is pure Dart.
+Riverpod is the only dependency-injection mechanism; `bootstrap()` builds
+one `ProviderContainer`. Architecture tests enforce the import rules.
+Details: [ARCHITECTURE.md](ARCHITECTURE.md).
+
+## Folder structure
+
+```text
+proxy-care-client/
+├── android/ ios/ web/       Platform projects
+├── assets/fonts/            Bundled Noto Sans Devanagari (OFL)
+├── config/env/              Non-secret compile-time configuration per environment
+├── docs/                    Feature guide, navigation, deep links, observability,
+│                            design-system mapping
+├── lib/
+│   ├── main.dart            Entry point: bootstrap, then runApp
+│   ├── app.dart             Root widget: theme, localization, router
+│   ├── app_routes.dart      The list of feature route modules
+│   ├── core/                Infrastructure:
+│   │   ├── auth/            Session abstraction, Supabase adapter, authorization
+│   │   ├── config/          Env parsing and validation
+│   │   ├── connectivity/    Network connection status
+│   │   ├── di/              Providers, container, bootstrap
+│   │   ├── error/           Exceptions, failures, error mapper, reporters
+│   │   ├── formatting/      Date/time rules, formatters
+│   │   ├── l10n/            ARB strings and generated localizations
+│   │   ├── lifecycle/       App lifecycle phases
+│   │   ├── logging/         AppLogger with redaction
+│   │   ├── network/         ApiClient, Dio factory, interceptors
+│   │   ├── notifications/   Push notification interfaces
+│   │   ├── observability/   Analytics and performance interfaces
+│   │   ├── platform/        Platform information
+│   │   ├── router/          The single GoRouter, guards, deep links
+│   │   ├── security/        Secure storage, redaction, session cleanup
+│   │   └── theme/           Design tokens, ThemeData, breakpoints
+│   ├── features/            One folder per feature (data/domain/presentation);
+│   │                        auth/ (empty layers) and the dev-only widget_showcase/
+│   └── shared/              Result type, design-system widgets
+├── test/                    Mirrors lib/; integration/, helpers/, fixtures/, mocks/
+├── tool/                    check_env.dart, GitHub Pages redirect
+├── Makefile                 Developer commands
+└── pubspec.yaml
+```
+
+## Environment configuration
+
+Configuration is compile-time (`--dart-define-from-file=config/env/<env>.json`)
+and validated at start-up by `Env.fromEnvironment()`, which throws an
+`EnvConfigException` listing every problem.
+
+| Define | Values | Default |
 | --- | --- | --- |
-| `build_runner` | ^2.17.1 | Runs code generators |
-| `freezed` | ^4.0.3 | Generates immutable models |
-| `json_serializable` | ^6.15.2 | Generates JSON (de)serializers |
-| `mocktail` | ^1.0.5 | Mocks for tests |
-| `flutter_lints` | ^6.0.0 | Base lint rules |
+| `APP_ENV` | `development`, `staging`, `production` | `development` in debug builds and tests only; **required** in release builds and config files |
+| `API_BASE_URL` | Absolute `http`/`https` URL, no query or fragment | `http://localhost:8080`, development only |
+| `APP_NAME` | Any text | `Proxy Care` |
+| `ENABLE_LOGGING` | `true` / `false` | `false` in production, otherwise `true` |
+| `FEATURE_FLAGS` | Comma-separated snake_case names | none |
+| `SUPABASE_URL` | Supabase project URL | required in staging and production; optional in development (signed out) |
+| `SUPABASE_PUBLISHABLE_KEY` | Publishable key (`sb_publishable_…`); secret and service-role keys are rejected | as above, together with `SUPABASE_URL` |
 
-Riverpod code generation (`riverpod_annotation` / `riverpod_generator`) is not
-used; providers are written by hand.
+Staging and production need an `https` `API_BASE_URL` (production may not
+point to a local host) and the Supabase settings; a release build never
+falls back to development. `config/env/*.json` holds **non-sensitive**
+values only: `--dart-define` values are readable from the app binary.
+`staging.json` and `production.json` are deliberately incomplete until the
+URLs and keys exist, so those builds fail validation. Check a file with
+`make check-env ENV=production`.
 
-Some packages are not used yet; they are in place for the following
-milestones.
+## Local development
 
-### Lockfile
+Prerequisites:
 
-`pubspec.lock` is committed (this is an application, not a reusable
-package). `make get` (`flutter pub get`) updates it; commit the change with
-the `pubspec.yaml` change that caused it. CI fails if resolving the
-dependencies would change the committed lockfile. Use `make get-locked`
-(`flutter pub get --enforce-lockfile`) to install exactly what it pins.
-
-## Local setup
+| For | Install |
+| --- | --- |
+| All | Flutter 3.50.0 (`flutter --version`), `make`, `jq` (used by CI checks) |
+| Android | Android Studio or the command-line tools with an SDK and the NDK Flutter requests, **JDK 21** (`flutter doctor` must show the Android toolchain) |
+| iOS | macOS, Xcode with command-line tools, CocoaPods only if Flutter asks for it |
+| Web | Chrome |
 
 ```sh
 cd proxy-care-client
@@ -70,213 +176,182 @@ make get        # flutter pub get
 make gen        # build_runner + flutter gen-l10n
 make analyze
 make test
+flutter run --dart-define-from-file=config/env/development.json   # add -d <device>
 ```
 
-Web support is enabled by default in current Flutter. If `flutter devices` does
-not list Chrome, run `flutter config --enable-web`.
+The development config points at a backend on `http://localhost:8080`; on
+the Android emulator use `http://10.0.2.2:8080` in a local copy of the
+config. Plain http is allowed in Android debug builds only. Without
+Supabase settings the app runs signed out.
 
-Run locally with the development configuration:
+Generated files (`*.g.dart`, `*.freezed.dart`, `lib/core/l10n/generated/`)
+are committed: after changing an annotated model or an ARB file run
+`make gen` and `make format`, and commit the result. Never edit them.
 
-```sh
-flutter run -d chrome --dart-define-from-file=config/env/development.json
-```
-
-### Generated files
-
-Generated Dart files are committed: `*.g.dart`, `*.freezed.dart` and the
-localizations in `lib/core/l10n/generated/`. After changing an annotated
-model or an ARB file, run `make gen` and `make format` and commit the result.
-Never edit generated files by hand. CI regenerates everything and fails if
-the committed files differ.
-
-## Environment configuration
-
-Configuration is passed at build time with `--dart-define-from-file` (or
-individual `--dart-define` flags) and read in `lib/core/config/env.dart` using
-`String.fromEnvironment`. `Env.fromEnvironment()` validates everything at
-start-up and throws an `EnvConfigException` listing every problem.
-
-| Define | Values | Default |
-| --- | --- | --- |
-| `APP_ENV` | `development`, `staging`, `production` | `development` in debug builds and tests only; **required** in release builds and config files |
-| `API_BASE_URL` | Absolute `http`/`https` URL, no query or fragment | `http://localhost:8080`, **development only** |
-| `APP_NAME` | Any text | `Proxy Care` |
-| `ENABLE_LOGGING` | `true` or `false` | `false` in production, otherwise `true` |
-| `FEATURE_FLAGS` | Comma-separated snake_case names, e.g. `new_checkout,beta_maps` | none |
-| `SUPABASE_URL` | Supabase project URL (`https://<ref>.supabase.co`); http allowed in development for a local stack | none: required in staging and production, optional in development (the app then runs signed out) |
-| `SUPABASE_PUBLISHABLE_KEY` | Supabase **publishable** key (`sb_publishable_…`, or a legacy anon key). Secret and service-role keys are rejected. | as above; set together with `SUPABASE_URL` |
-
-Production configuration never silently falls back to development: a
-release build without `APP_ENV` fails at start-up, and `make check-env`
-rejects a file without it.
-
-Rules for staging and production:
-
-- `API_BASE_URL` is **required**; there is no fallback to the development URL.
-- It must use `https`.
-- In production it must not point to `localhost`, `127.0.0.1`, `0.0.0.0`,
-  `::1` or `10.0.2.2`.
-
-Config files live in `config/env/` and are committed. They hold
-**non-sensitive** values only:
-
-| File | Notes |
-| --- | --- |
-| `config/env/development.json` | Local backend at `http://localhost:8080`; change the port to match your backend. |
-| `config/env/staging.json` | `API_BASE_URL` is empty until the staging URL is known, so a staging build fails validation instead of using another URL. |
-| `config/env/production.json` | Same for production. |
-
-Never commit API secrets, private keys, database credentials, payment
-provider secrets, signing credentials or authentication secrets. Values
-passed with `--dart-define` end up in the app binary and are readable by
-anyone who has it, so they are not secure storage; sensitive credentials
-stay in backend infrastructure or CI secret management.
-
-Check a file without building:
-
-```sh
-make check-env ENV=production   # validates config/env/production.json
-```
-
-## Build
-
-```sh
-make build-web                  # development config
-make build-web ENV=staging      # needs API_BASE_URL in config/env/staging.json
-make build-web ENV=production   # needs API_BASE_URL in config/env/production.json
-```
-
-`build-web` first validates the config file, then runs
-`flutter build web --release --dart-define-from-file=config/env/<ENV>.json`.
-Output goes to `build/web/`.
-
-## Make commands
+## Build commands
 
 | Command | What it does |
 | --- | --- |
-| `make get` | `flutter pub get` (updates `pubspec.lock`) |
-| `make get-locked` | `flutter pub get --enforce-lockfile` |
+| `make get` / `make get-locked` | `flutter pub get` (updates the lockfile) / with `--enforce-lockfile` |
 | `make gen` | `dart run build_runner build --delete-conflicting-outputs`, then `flutter gen-l10n` |
-| `make format` | `dart format .` |
-| `make format-check` | Fails if any file is not formatted |
-| `make analyze` | `flutter analyze` with the strict settings in `analysis_options.yaml` |
+| `make format` / `make format-check` | `dart format .` / fail if anything is unformatted |
+| `make analyze` | `flutter analyze` (strict settings) |
 | `make test` | `flutter test` |
-| `make check-env [ENV=...]` | Validates `config/env/<ENV>.json` |
-| `make build-web [ENV=...]` | Validates the config, then builds a release web bundle |
-| `make build-showcase [BASE_HREF=/repo/]` | Release web build of the widget showcase (`config/env/showcase.json`) |
+| `make goldens` | Regenerate golden images (Linux; see TESTING.md) |
+| `make check-env [ENV=…]` | Validate `config/env/<ENV>.json` |
+| `make build-android [ENV=…]` | Validate, then `flutter build apk --release` and `flutter build appbundle --release` |
+| `make build-ios [ENV=…]` | Validate, then `flutter build ios --release --no-codesign` (macOS) |
+| `make build-web [ENV=…]` | Validate, then `flutter build web --release` |
+| `make build-showcase [BASE_HREF=…]` | Web build of the widget showcase |
 
-## Static analysis
+`ENV` defaults to `development`. Outputs: `build/app/outputs/` (Android),
+`build/ios/iphoneos/Runner.app` (iOS), `build/web/`.
 
-`analysis_options.yaml` includes `flutter_lints` and turns on:
+## API integration
 
-- `strict-casts`, `strict-inference`, `strict-raw-types`
-- `prefer_const_constructors`, `prefer_const_declarations`,
-  `prefer_const_literals_to_create_immutables`, `prefer_final_locals`,
-  `prefer_single_quotes`
-- `require_trailing_commas`, with the formatter set to
-  `trailing_commas: preserve`: any argument or parameter list that is split
-  across lines ends with a trailing comma.
+Repositories call the backend through `ApiClient` (`apiClientProvider`),
+never Dio directly. The client unwraps the standard envelope
+`{success, data, error, meta}`, decodes `data` with a typed decoder, sends
+JSON, supports multipart uploads, downloads, cursor pagination, idempotency
+keys and cancellation, and throws only `AppException`s. Interceptors, in
+order: correlation ID, logging (redacted), authentication (bearer token,
+one replay after a 401), retry (GET only on 502/503/504 and transient
+connection errors, bounded backoff). Details: ARCHITECTURE.md,
+"Networking".
 
-Generated `*.g.dart`, `*.freezed.dart` and `lib/core/l10n/generated/` files
-are excluded from analysis.
+## Error handling
 
-## Continuous integration
+Infrastructure errors become `AppException`s in the data layer
+(`ErrorMapper` reads the backend codes: `VALIDATION_ERROR`,
+`UNAUTHENTICATED`, `FORBIDDEN`, `NOT_FOUND`, `CONFLICT`,
+`BUSINESS_RULE_VIOLATION`, `RATE_LIMITED`, `REQUEST_TIMEOUT`,
+`INTERNAL_ERROR`, `SERVICE_UNAVAILABLE`); repositories return
+`Result<T>` with typed `AppFailure`s (`guardResult`); presentation maps
+failures to localized messages (`failureMessage`). Uncaught errors go to
+the `ErrorReporter` and a privacy-safe `CrashReporter` (no-op until a
+vendor is added). Details: ARCHITECTURE.md, "Errors".
 
-`.github/workflows/ci.yml` (at the repository root) runs on every push to
-`main` and on pull requests that touch `proxy-care-client/`:
+## Authentication
 
-1. Install Flutter 3.50.x (stable).
-2. `make get`, `make gen` (build_runner and gen-l10n), `make format`.
-3. Fail if that changed anything tracked or added anything new: the
-   committed `pubspec.lock`, generated files and formatting must be current.
-4. `make analyze`.
-5. `make test`.
-6. Validate the development config, and confirm a production config without
-   `API_BASE_URL`, or any config without `APP_ENV`, is rejected.
-7. `make build-web` (release, development config).
+Supabase Auth issues sessions; the Spring Boot API validates its JWTs. The
+SDK owns refresh, rotation and lifecycle; the app maps its events to
+`AuthenticationState` (initializing, authenticated, unauthenticated,
+session expired) and exposes the session to Dio only through
+`AccessTokenProvider`. No sign-in screens exist yet. Details:
+[AUTHENTICATION.md](AUTHENTICATION.md).
 
-CI does not depend on downloaded artifacts: everything it needs is in the
-repository.
+## Secure storage
 
-`.github/workflows/pages.yml` publishes the widget showcase (below) to
-GitHub Pages on every push to `main` that touches `proxy-care-client/`, and
-on demand: it repeats the checks above (`make get-locked`, `make gen`,
-`make format-check`, `make analyze`, `make test`), runs
-`make build-showcase BASE_HREF=/<repository>/`, adds a `404.html` that
-forwards path links to the app's hash URLs, and deploys with
-`actions/deploy-pages`. It needs Pages enabled with **Source: GitHub
-Actions** in the repository settings.
+The whole Supabase session is stored as one entry through
+`SecureKeyValueStore` (`flutter_secure_storage`): Android Keystore with
+AES-GCM, iOS Keychain (`first_unlock_this_device`, not synced), WebCrypto
+on web (weaker, documented). Nothing is written to SharedPreferences.
+Details: [SECURITY.md](SECURITY.md).
 
-## Project structure
+## Routing
 
-```text
-proxy-care-client/
-├── ARCHITECTURE.md         Layers, dependency rules, DI and feature conventions
-├── AUTHENTICATION.md       Supabase Auth, session storage, Dio integration
-├── SECURITY.md             Token storage, logging, backend JWT validation
-├── TESTING.md              Test layout, helpers, rules, integration and goldens
-├── assets/fonts/          Bundled Noto Sans Devanagari (OFL)
-├── config/env/             Compile-time defines per environment
-├── docs/                   Design system, navigation, deep linking, observability
-├── lib/
-│   ├── main.dart           Entry point: bootstrap, then runApp
-│   ├── app.dart            Root widget: theme, localization, router
-│   ├── app_routes.dart     Feature route modules (none yet) and the
-│   │                       dev-only widget showcase switch
-│   ├── core/               Infrastructure: config, di, error, l10n, network,
-│   │                       router, security, theme, utils, widgets, services,
-│   │                       constants
-│   ├── features/auth/      Empty data / domain / presentation layer folders
-│   ├── features/widget_showcase/
-│   │                       Dev-only /widget-showcase component preview
-│   └── shared/             Cross-feature models, widgets, extensions
-├── test/                   Mirrors lib/, plus architecture, fixtures, helpers,
-│                           mocks
-├── tool/check_env.dart     Validates a config file from the command line
-├── tool/github_pages/      404.html redirect for the GitHub Pages showcase
-├── web/                    Web entry files and icons
-├── analysis_options.yaml
-├── l10n.yaml               flutter gen-l10n configuration
-├── Makefile
-└── pubspec.yaml
-```
+One `GoRouter` assembled from feature `RouteModule`s listed in
+`lib/app_routes.dart`. Every route declares `RouteAccess` (public,
+guest-only, authenticated with optional roles, permissions and feature);
+pure guards redirect and preserve the intended destination. Identity goes
+in path parameters, never in extras. Details:
+[docs/navigation.md](docs/navigation.md).
 
-See [ARCHITECTURE.md](ARCHITECTURE.md) for the layer rules (checked by
-`test/architecture/dependency_rules_test.dart`), Riverpod dependency-injection
-conventions and how a feature module is built.
+## Deep links
+
+go_router handles links at cold start and while running; the deep-link
+policy accepts only `https` links on configured hosts, and guards apply as
+for any navigation. Android App Links and iOS Universal Links are wired
+with the reserved placeholder host `app-links.invalid`; replace it when a
+domain is owned. Details: [docs/deep-linking.md](docs/deep-linking.md).
+
+## State management
+
+Riverpod 3: top-level `Provider`s for services (typed as interfaces),
+`Notifier` / `AsyncNotifier` controllers for screen state, overrides for
+tests and environment-specific implementations. Widgets read controllers;
+business rules live in domain use cases or repositories, never in widgets.
+Conventions: ARCHITECTURE.md, "Dependency injection" and
+[docs/feature-guide.md](docs/feature-guide.md).
 
 ## Design system
 
-The UI follows the Proxy Care Design System (`claude/proxycare-design-system.md`
-in the Proxy Care project), the single source of truth. It is implemented
-as:
+The UI follows the Proxy Care Design System
+(`claude/proxycare-design-system.md` in the Proxy Care project), the single
+source of truth: tokens and `ThemeData` in `lib/core/theme/`, components in
+`lib/shared/widgets/` (`PcButton`, `PcTextField`, `PcCard`, …), mapped in
+[docs/design-system-mapping.md](docs/design-system-mapping.md). Light theme
+only, in two densities: standard (family app) and comfortable (caretaker
+app).
 
-- tokens and theme in `lib/core/theme/` (`buildProxyCareTheme`, the
-  `PcTheme` extension, the density providers);
-- components in `lib/shared/widgets/` (`PcButton`, `PcTextField`, `PcCard`,
-  …).
+**Widget showcase.** `/widget-showcase` shows every component with its
+variants and states. It is a development preview, registered only when
+`FEATURE_FLAGS` contains `widget_showcase` and `APP_ENV` is not
+`production` (`config/env/showcase.json`), and is published to GitHub
+Pages by `pages.yml`.
 
-[docs/design-system-mapping.md](docs/design-system-mapping.md) maps every
-token and component to code and records how each ambiguity in the spec was
-handled. The design system defines a light theme only, in two densities:
-standard (family app) and comfortable (caretaker app). The web icons are
-plain placeholders until brand artwork exists.
+## Testing
 
-### Widget showcase
+`flutter test` runs unit, widget, integration (`test/integration/`,
+mocked backend) and golden tests (`--tags golden`, Linux only); nothing
+touches the network. Layout, helpers and rules:
+[TESTING.md](TESTING.md).
 
-`/widget-showcase` (`lib/features/widget_showcase/`) shows every component in
-`lib/shared/widgets/` with its variants, sizes and states, grouped by
-category, with a switch to preview either density. It is a development
-preview only: interactions use in-memory state and call no API.
+## Continuous integration
 
-- It is registered only when `FEATURE_FLAGS` contains `widget_showcase` and
-  `APP_ENV` is not `production` (`WidgetShowcaseRoutes.isEnabled`). The
-  development, staging and production configs leave it off.
-- `config/env/showcase.json` is the development config with the flag on:
-  `flutter run -d chrome --dart-define-from-file=config/env/showcase.json`,
-  then open `/#/widget-showcase`.
-- Published by `pages.yml` at
-  `https://<owner>.github.io/<repository>/#/widget-showcase`.
+`.github/workflows/ci.yml` runs on pull requests and pushes to `main`
+touching `proxy-care-client/`, with Flutter 3.50.0:
+
+| Job | Runner | Steps |
+| --- | --- | --- |
+| Web | Ubuntu | get, gen, format; fail if the lockfile, generated files or formatting changed; analyze; test; config checks (release configs never fall back to development); `make build-web` |
+| Android | Ubuntu, JDK 21 | get (locked), gen, format check, analyze, test, `make build-android` (APK + App Bundle) |
+| iOS | macOS, latest stable Xcode | get (locked), gen, format check, analyze, test, `make build-ios` (no code signing) |
+
+No signing credentials are used and nothing is deployed to a store. Other
+workflows: `pages.yml` (widget showcase on GitHub Pages) and `goldens.yml`
+(bless golden images on a feature branch).
+
+## Android configuration
+
+- **Application ID** `com.proxycare.client` (placeholder; the Kotlin
+  namespace stays `com.proxycare.proxy_care_client`). Register the real ID
+  before release; it cannot change after publishing.
+- **Permissions:** `INTERNET`; `ACCESS_NETWORK_STATE` comes from
+  `connectivity_plus`.
+- **Backups off:** `allowBackup="false"`, `fullBackupContent="false"` and
+  `data_extraction_rules.xml` exclude all data from cloud backup and device
+  transfer (Keystore-encrypted storage cannot be restored elsewhere).
+- **Deep links:** `flutter_deeplinking_enabled` and an `autoVerify` App
+  Links intent filter for `https://${appLinkHost}`; set the host with
+  `-PappLinkHost=<domain>` (default `app-links.invalid`).
+- **Signing:** release builds are signed with the debug key so CI needs no
+  credentials. For a store release, create an upload key outside the
+  repository, add a release `signingConfig` that reads it from a
+  git-ignored `key.properties` or CI secrets, and enable Play App Signing.
+  Never commit keystores or passwords.
+- **Before release:** app icon, display name check, `versionCode` /
+  `versionName` from `pubspec.yaml`, R8 and obfuscation decision, Data
+  Safety form (see SECURITY.md).
+
+## iOS configuration
+
+- **Bundle ID** `com.proxycare.client` (placeholder), display name "Proxy
+  Care", minimum iOS 15.0.
+- **Keychain:** `flutter_secure_storage` with
+  `first_unlock_this_device`, not synchronized. No extra entitlement is
+  needed for the app's own Keychain items. Keychain items survive
+  uninstall; clearing them on the first launch after a reinstall is pending
+  (SECURITY.md).
+- **Deep links:** `FlutterDeepLinkingEnabled` in `Info.plist`;
+  `Runner.entitlements` declares Associated Domains with the placeholder
+  `applinks:app-links.invalid`. Signing for a device needs the Associated
+  Domains capability on the App ID, or the entry removed until a domain
+  exists.
+- **Signing:** CI builds with `--no-codesign`. Set the development team and
+  provisioning in Xcode (never commit certificates or profiles).
+- **Before release:** app icon, privacy manifest (`PrivacyInfo.xcprivacy`)
+  and App Store privacy labels, export-compliance key.
 
 ## MVP decisions
 
@@ -284,13 +359,12 @@ preview only: interactions use in-memory state and call no API.
 | --- | --- |
 | Commit `pubspec.lock` | Implemented; CI checks it |
 | Commit generated files; CI fails if regeneration changes them | Implemented |
-| Non-sensitive config in `config/env/*.json`; no secrets; production never falls back to development | Implemented |
-| Android and iOS only | **Deferred**: the app stays web-only until the platform move is scheduled |
-| Native platform typography; bundle Noto Sans Devanagari only | Implemented (400, 500, 700; SIL OFL 1.1, licence registered at start-up) |
+| Non-sensitive config in `config/env/*.json`; production never falls back to development | Implemented |
+| Android and iOS | Implemented in Milestone 10 (web kept); placeholder IDs |
+| Native platform typography; bundle Noto Sans Devanagari only | Implemented |
 | Flutter's built-in Material icons | Implemented |
-| Provisional breakpoints: compact < 600dp, tablet ≥ 600dp, 720dp max content width | Implemented in `PcBreakpoints` (configurable) |
+| Provisional breakpoints: compact < 600dp, tablet ≥ 600dp, 720dp max content width | Implemented in `PcBreakpoints` |
 | Light theme only | Implemented |
 | Standard backend error envelope and codes | Implemented in `ErrorMapper` |
 | Vendor-independent crash reporter, no-op for the MVP (Crashlytics is LL-05) | Implemented |
 | Localized user-facing error messages (ARB, English) | Implemented in `core/l10n` |
-

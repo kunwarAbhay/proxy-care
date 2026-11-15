@@ -3,6 +3,9 @@
 How the Proxy Care client is structured, and the rules every feature
 follows. The rules marked **enforced** are checked by
 `test/architecture/dependency_rules_test.dart`, so breaking one fails CI.
+The same Dart code runs on Android, iOS and web; platform specifics live
+only in `android/`, `ios/`, `web/` and plugin adapters. A step-by-step
+guide to adding a feature is in [docs/feature-guide.md](docs/feature-guide.md).
 
 ## Layers and dependency direction
 
@@ -242,7 +245,8 @@ class ProfileController extends AsyncNotifier<Profile> {
 
 ## Feature module conventions
 
-Build a feature from the inside out:
+Build a feature from the inside out (walkthrough:
+[docs/feature-guide.md](docs/feature-guide.md)):
 
 1. **Domain**
    - `entities/`: immutable business objects shaped by the business, not by
@@ -325,6 +329,20 @@ Three kinds of error, each with its own type and its own layer:
 Programming errors (`Error`: `TypeError`, `StateError`, failed asserts) are
 none of these. They are not caught by repositories; they reach the global
 handlers.
+
+The flow end to end:
+
+```text
+Dio / storage / JSON error
+  → ErrorMapper → AppException            (core, data sources)
+  → guardResult → Result.failure(AppFailure)   (repository)
+  → controller state (AsyncValue / sealed state)  (presentation)
+  → AppLocalizations.failureMessage(failure) → localized text  (widget)
+
+Anything uncaught (framework, platform, zone)
+  → global handlers → ErrorReporter
+  → AppLogger (redacted) + CrashReporter (error type, stack, context only)
+```
 
 ### Result
 

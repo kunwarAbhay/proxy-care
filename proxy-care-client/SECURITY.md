@@ -21,10 +21,7 @@ must be checked by the Spring Boot API.
 - Tokens are not exposed to UI code: widgets get `AuthenticationState`,
   which carries no tokens. The access token is only read by the API client.
 
-## Android (when the Android target is added)
-
-The app is web-only for now (decision 4 is deferred), so these settings are
-in code and must be completed in `android/` when that folder exists:
+## Android secure storage
 
 - `flutter_secure_storage` 10+ no longer uses Jetpack
   `EncryptedSharedPreferences`. The app sets AES-GCM for both the key cipher
@@ -33,27 +30,31 @@ in code and must be completed in `android/` when that folder exists:
 - `resetOnError` (the plugin default, kept) erases entries whose Keystore key
   can no longer unwrap them; the user signs in again instead of the app
   failing on every start.
-- **Backups:** Keystore keys never leave the device, so backed-up ciphertext
-  cannot be decrypted after a restore and can cause `Failed to unwrap key`
-  errors. In `AndroidManifest.xml` set `android:allowBackup="false"`, or keep
-  backups and exclude the plugin's preferences file with
-  `android:fullBackupContent` (API ≤ 30) and `android:dataExtractionRules`
-  (API 31+) rules that exclude the `FlutterSecureStorage` shared preferences.
+- **Backups are off** (configured): Keystore keys never leave the device,
+  so backed-up ciphertext could not be decrypted after a restore and would
+  cause `Failed to unwrap key` errors. `AndroidManifest.xml` sets
+  `android:allowBackup="false"` and `android:fullBackupContent="false"`
+  (API ≤ 30), and `res/xml/data_extraction_rules.xml` excludes all data from
+  cloud backup and device-to-device transfer (API 31+).
 
-## iOS (when the iOS target is added)
+## iOS Keychain
 
 - Entries are Keychain items with accessibility
   `first_unlock_this_device` (`FlutterSecureKeyValueStore.iosOptions`):
   readable after the device has been unlocked once since boot (so a refresh
   can run in the background), never synced to iCloud Keychain
   (`synchronizable: false`) and not restored to another device.
-- **Uninstall:** iOS keeps Keychain items after the app is deleted. A
-  reinstall could find an old session. When the iOS target is added, clear
-  the secure store on the first launch after installation (using a
-  non-secret "first run" marker); the Supabase session would otherwise be
-  restored and then refreshed or rejected by the server.
+- No Keychain entitlement or access group is needed: the app uses only its
+  own default Keychain items.
+- **Uninstall (pending):** iOS keeps Keychain items after the app is
+  deleted, so a reinstall can find the previous session. Planned: clear the
+  secure store on the first launch after installation, using a non-secret
+  "first run" marker in app storage (needs a small file-storage dependency
+  or a native marker; not added in the MVP foundation). Until then the old
+  session is restored and is either still valid or rejected by the server
+  on its next refresh.
 
-## Web (current target)
+## Web
 
 `flutter_secure_storage` on web encrypts values with WebCrypto and keeps them
 in the browser's storage, with the key in the same browser. This was chosen
@@ -63,6 +64,26 @@ use the stored session. It also works only on HTTPS or localhost.
 Mitigations to apply when deploying: a strict Content Security Policy, HTTP
 Strict Transport Security, no third-party scripts on the app origin, and the
 1-hour access-token expiry with refresh-token reuse detection left on.
+
+## Token refresh and session invalidation
+
+Summary of [AUTHENTICATION.md](AUTHENTICATION.md):
+
+- **Refresh** is owned by the Supabase SDK: it refreshes before expiry,
+  pauses in the background, de-duplicates concurrent refreshes and rotates
+  the single-use refresh token. The app has no scheduler or token store of
+  its own.
+- **401 handling:** `AuthInterceptor` reuses a newer token if the SDK
+  already has one, otherwise asks for one refresh, then replays the request
+  **once**; concurrent 401s share one refresh (tested). A 401 alone never
+  ends the session.
+- **Invalidation:** a rejected refresh token ends the session
+  (`SessionExpired`) and deletes the stored session; signing out
+  (`invalidateSession`) signs out locally and deletes it even if the SDK
+  call fails; `SessionCleanup` tasks (for example the push token) run
+  whenever a session ends. Issued access tokens stay valid until they
+  expire (1 hour), so the backend should check `session_id` for sensitive
+  operations.
 
 ## Sensitive logging restrictions
 
@@ -117,6 +138,40 @@ advertising ID, the model, the OS version, location or installed apps.
 Connectivity is used on the device only, to explain failures, and is not
 sent anywhere. Any other device data needs a privacy review and updates to
 this section and the store privacy declarations.
+
+## Platform security considerations
+
+- **Transport:** release builds use https only (staging and production
+  `API_BASE_URL` must be https; Android blocks cleartext by default and
+  allows it only in debug builds for a local backend; iOS App Transport
+  Security is left at its defaults).
+- **Deep links** are data from outside: only `https` links on configured
+  hosts are opened, every incoming location is sanitized, and links pass
+  the same authentication and authorization guards as in-app navigation.
+  Identifiers in links are opaque IDs.
+- **Notifications:** payloads are validated before navigation and carry IDs
+  only (lock screens can show them).
+- **Release hardening still to decide:** Android R8/obfuscation and
+  `--split-debug-info` with archived symbols, iOS privacy manifest, and
+  screenshot protection for sensitive screens (when they exist).
+- The client never enforces access: every permission is checked by the API.
+
+## Dependency security
+
+- Versions are pinned by the committed `pubspec.lock`; CI installs exactly
+  them (`--enforce-lockfile` in the Android, iOS and Pages jobs) and fails
+  if resolving would change it.
+- Add a dependency only when the platform or an existing package cannot do
+  the job; prefer Dart/Flutter team and widely used, maintained packages;
+  review what it pulls in (`flutter pub deps`) and what it collects
+  (analytics, crash or ad SDKs need a privacy review).
+- Vendor SDKs stay behind interfaces in one folder each (architecture tests
+  enforce this for `supabase_flutter`, `flutter_secure_storage`, `logger`
+  and `connectivity_plus`).
+- `shared_preferences` is present only as a transitive dependency of
+  `supabase_flutter`; app code may not use it (test enforced).
+- Review `flutter pub outdated` regularly and apply security releases
+  promptly; GitHub Actions are pinned by major version.
 
 ## Environment configuration
 
