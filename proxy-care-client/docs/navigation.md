@@ -10,7 +10,8 @@ locations are registered.
 
 ```text
 lib/app_routes.dart            appRouteModules = [BookingsRoutes(), ...]
-        │  (main.dart overrides routeModulesProvider with it)
+        │  (main.dart overrides routeModulesProvider with
+        │   enabledRouteModules(env): these plus dev-only modules)
         ▼
 core/di/router_providers.dart  routeRegistryProvider ─► RouteRegistry
         │                         (validates every module)
