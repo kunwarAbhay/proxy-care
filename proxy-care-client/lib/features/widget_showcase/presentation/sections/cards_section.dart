@@ -52,7 +52,9 @@ class CardsSection extends StatelessWidget {
                 child: PcStatTile(label: 'This week', value: '₹2,625'),
               ),
               SizedBox(width: PcSpacing.space3),
-              Expanded(child: PcStatTile(label: 'Visits', value: '3')),
+              Expanded(
+                child: PcStatTile(label: 'Visits', value: '3'),
+              ),
             ],
           ),
         ),

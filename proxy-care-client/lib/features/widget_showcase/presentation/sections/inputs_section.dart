@@ -88,7 +88,7 @@ class _InputsSectionState extends State<InputsSection> {
             keyboardType: TextInputType.phone,
             inputFormatters: [
               FilteringTextInputFormatter.digitsOnly,
-              const LengthLimitingTextInputFormatter(10),
+              LengthLimitingTextInputFormatter(10),
             ],
             error: _mobileError,
             helper: 'We send the code to this number',
