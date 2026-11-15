@@ -11,7 +11,7 @@
 #   make build-web [ENV=...]      Validate config, then release web build
 #   make build-android [ENV=...]  Validate config, then release APK and App
 #                                 Bundle (debug-key signed; needs Android SDK
-#                                 and JDK 17)
+#                                 and JDK 21)
 #   make build-ios [ENV=...]      Validate config, then unsigned release iOS
 #                                 build (macOS with Xcode only)
 #   make goldens                  Regenerate golden images (Linux; see
