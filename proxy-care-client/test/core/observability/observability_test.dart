@@ -43,7 +43,9 @@ void main() {
         .read(analyticsServiceProvider)
         .logEvent('booking_confirmed', parameters: {'purposes': 2});
 
-    expect(adapter.events.single, ('booking_confirmed', {'purposes': 2}));
+    final (name, parameters) = adapter.events.single;
+    expect(name, 'booking_confirmed');
+    expect(parameters, {'purposes': 2});
   });
 
   group('FilteringAnalyticsService', () {

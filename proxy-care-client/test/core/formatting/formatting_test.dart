@@ -54,7 +54,8 @@ void main() {
   });
 
   group('AppFormatters', () {
-    final formatters = AppFormatters();
+    late AppFormatters formatters;
+    setUp(() => formatters = AppFormatters());
     final instant = DateTime.utc(2026, 11, 15, 5); // 10:30 IST
 
     test('formats dates and instants in IST', () {
