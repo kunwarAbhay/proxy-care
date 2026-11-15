@@ -1,11 +1,15 @@
-/// Removes secrets and personal data from what is logged.
+/// Removes secrets and personal data from logs, error reports and
+/// analytics. Pure Dart.
 ///
-/// Matching is by name (case-insensitive substring), so `refresh_token`,
-/// `X-Api-Key` and `patientName` are all caught. The list errs on the side
-/// of hiding: a log line never needs these values.
-final class LogRedactor {
+/// Structured values are matched by key name (case-insensitive substring),
+/// so `refresh_token`, `X-Api-Key` and `patientName` are all caught; the
+/// list errs on the side of hiding. Free text ([text]) is scanned for
+/// values that are sensitive whatever they are called: JWTs, bearer
+/// tokens, email addresses and long digit runs (phone, Aadhaar, account
+/// and card numbers).
+final class Redactor {
   /// Creates a redactor; [extraSensitiveKeys] adds names to the defaults.
-  const LogRedactor({this.extraSensitiveKeys = const []});
+  const Redactor({this.extraSensitiveKeys = const []});
 
   /// Shown instead of a hidden value.
   static const String mask = '***';
@@ -74,6 +78,17 @@ final class LogRedactor {
     for (final MapEntry(:key, :value) in headers.entries)
       key: isSensitive(key) ? mask : '$value',
   };
+
+  static final List<RegExp> _textPatterns = [
+    RegExp(r'eyJ[\w-]+\.[\w-]+\.[\w-]*'), // JWT
+    RegExp(r'Bearer\s+\S+', caseSensitive: false),
+    RegExp(r'[\w.+-]+@[\w-]+(\.[\w-]+)+'), // email
+    RegExp(r'\+?\d(?:[ -]?\d){8,}'), // 9+ digits: phone, Aadhaar, account
+  ];
+
+  /// [text] with tokens, email addresses and long numbers masked.
+  String text(String text) =>
+      _textPatterns.fold(text, (result, pattern) => result.replaceAll(pattern, mask));
 
   /// A copy of a JSON value with every sensitive field masked, at any
   /// depth. Only used when body logging is switched on explicitly.

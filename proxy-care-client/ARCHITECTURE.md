@@ -73,6 +73,7 @@ lib/
 ├── app_routes.dart          The feature route modules (the only list of features)
 ├── core/
 │   ├── config/              Env: compile-time configuration and validation
+│   ├── connectivity/        Network connection status (connectivity_plus)
 │   ├── constants/           Feature-agnostic constants, one file per topic
 │   ├── di/                  Core providers, root container, bootstrap
 │   ├── auth/                Authentication session and state, Supabase
@@ -81,10 +82,16 @@ lib/
 │   │                        guard, crash reporter, global error handlers
 │   ├── l10n/                ARB strings, generated localizations, error
 │   │                        messages
+│   ├── formatting/          Date/time rules, date, number and rupee formats
+│   ├── lifecycle/           App lifecycle phases
+│   ├── logging/             AppLogger and its redacting implementation
 │   ├── network/             Dio client, interceptors, network errors
+│   ├── notifications/       Push notification interfaces and coordinator
+│   ├── observability/       Analytics and performance interfaces (no-op)
+│   ├── platform/            The platform the app runs on
 │   ├── router/              The single GoRouter: route definitions, modules,
 │   │                        guards, deep links, notification entry point
-│   ├── security/            Secure key-value storage
+│   ├── security/            Secure storage, redaction, session cleanup
 │   ├── services/            Other cross-cutting services
 │   ├── theme/               Design-system tokens, breakpoints, ThemeData
 │   ├── utils/               Pure helpers
@@ -138,7 +145,8 @@ locator and no global mutable singleton.
 
 | Providers | File |
 | --- | --- |
-| Infrastructure (env, logger, error reporter, crash reporter, error mapper) | `core/di/core_providers.dart` |
+| Infrastructure (env, logger, error reporter, crash reporter, analytics, performance, formatters, error mapper) | `core/di/core_providers.dart` |
+| Device services (connectivity, lifecycle, platform, push notifications, session cleanup) | `core/di/platform_providers.dart` |
 | Routing (route modules, options, registry, router, notification navigator) | `core/di/router_providers.dart` |
 | Networking (Dio, API client) | `core/di/network_providers.dart` |
 | Authentication (Supabase, session, state, authorization) | `core/di/auth_providers.dart` |
@@ -527,7 +535,7 @@ mapped by `ErrorMapper` (see [Errors](#errors)).
 Each attempt is logged as method, path, status and duration. Hosts, query
 values, headers and bodies are not logged; debug builds add headers with
 secrets masked and query parameter names. Body logging is off and, if
-enabled, masks credentials and personal or health fields (`LogRedactor`).
+enabled, masks credentials and personal or health fields (`Redactor`).
 
 ## Navigation
 
@@ -566,9 +574,43 @@ and [docs/deep-linking.md](docs/deep-linking.md).
    `ProxyCareApp` inside `UncontrolledProviderScope(container: ...)`;
    `ProxyCareApp` uses `MaterialApp.router` with `routerProvider`.
 
+Inside `bootstrap()`, after the error handlers, Supabase Auth is
+initialized and the session restored, date formatting data is loaded
+(`AppFormatters.initialize`), and the session-following services start
+(`sessionCleanupProvider`, `pushNotificationCoordinatorProvider`).
+
 Bootstrap contains no feature logic. Future infrastructure that must be ready
-before the first frame (for example restoring a session from secure storage)
-is added as an extra step inside `bootstrap()`.
+before the first frame is added as an extra step inside `bootstrap()`.
+
+## Cross-cutting services
+
+Shared by every feature; each is an interface with a local or no-op
+default, so no vendor SDK is required.
+
+- **Logging:** `loggerProvider` (`AppLogger`): levels, structured fields,
+  redaction, environment-aware minimum level. See
+  [docs/observability.md](docs/observability.md).
+- **Observability:** `CrashReporter`, `AnalyticsService` (always filtered),
+  `PerformanceMonitor`; no-op until adapters are added (same doc).
+- **Localization:** ARB + gen-l10n, English; conventions in
+  `lib/core/l10n/README.md`.
+- **Formatting:** `appFormattersProvider` (`AppFormatters`) for every
+  user-facing date, time, number and amount; `date_time_rules.dart` states
+  the rules: instants in UTC, shown in IST; civil dates never converted;
+  amounts in integer paise.
+- **Connectivity:** `connectivityStatusProvider`: online/offline from the
+  device's network interfaces. Not proof that the API is reachable; never
+  skip a request because of it.
+- **Lifecycle:** `appLifecyclePhaseProvider` (foreground, inactive,
+  background, detached) for services to `ref.listen`.
+- **Platform:** `appPlatformProvider`, the only device information read.
+- **Push notifications:** `PushMessagingService` (unavailable until a
+  provider is chosen) and `DeviceTokenRegistry` (no endpoint yet), joined
+  by `PushNotificationCoordinator`: registers the token while signed in,
+  deletes and unregisters it when the session ends, and passes tapped
+  payloads to `NotificationNavigator`.
+- **Security utilities:** `Redactor`, `SessionCleanup`, analytics filtering
+  and privacy-safe crash reports; conventions in SECURITY.md.
 
 ## Shared code conventions
 

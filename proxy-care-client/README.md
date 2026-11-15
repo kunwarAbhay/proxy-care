@@ -27,6 +27,7 @@ project.
 | --- | --- | --- |
 | `go_router` | ^18.1.1 | Declarative routing |
 | `flutter_riverpod` | ^3.5.0 | State management and dependency injection |
+| `connectivity_plus` | ^7.3.2 | Network connection status (not reachability) |
 | `dio` | ^5.11.1 | HTTP client |
 | `flutter_secure_storage` | ^11.2.0 | Secure storage for the Supabase session (Keystore / Keychain / WebCrypto) |
 | `supabase_flutter` | ^2.18.3 | Supabase Auth (identity provider); sessions persisted through secure storage |
@@ -215,7 +216,7 @@ proxy-care-client/
 ├── SECURITY.md             Token storage, logging, backend JWT validation
 ├── assets/fonts/          Bundled Noto Sans Devanagari (OFL)
 ├── config/env/             Compile-time defines per environment
-├── docs/                   Design system mapping, navigation, deep linking
+├── docs/                   Design system, navigation, deep linking, observability
 ├── lib/
 │   ├── main.dart           Entry point: bootstrap, then runApp
 │   ├── app.dart            Root widget: theme, localization, router

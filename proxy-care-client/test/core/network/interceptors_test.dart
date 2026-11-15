@@ -4,12 +4,12 @@ import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:proxy_care_client/core/error/app_exception.dart';
 import 'package:proxy_care_client/core/network/api_client.dart';
-import 'package:proxy_care_client/core/network/interceptors/log_redactor.dart';
 import 'package:proxy_care_client/core/network/interceptors/logging_interceptor.dart';
 import 'package:proxy_care_client/core/network/public_endpoints.dart';
 import 'package:proxy_care_client/core/network/request_options.dart';
 import 'package:proxy_care_client/core/network/request_replay.dart';
 import 'package:proxy_care_client/core/network/transfer.dart';
+import 'package:proxy_care_client/core/security/redactor.dart';
 
 import '../../helpers/fake_http_adapter.dart';
 import '../../helpers/network_harness.dart';
@@ -669,8 +669,8 @@ void main() {
     });
   });
 
-  group('LogRedactor', () {
-    const redactor = LogRedactor();
+  group('Redactor', () {
+    const redactor = Redactor();
 
     test('masks credentials and personal fields at any depth', () {
       final redacted = redactor.json({
@@ -710,7 +710,7 @@ void main() {
     });
 
     test('accepts extra sensitive names', () {
-      const custom = LogRedactor(extraSensitiveKeys: ['ward']);
+      const custom = Redactor(extraSensitiveKeys: ['ward']);
       expect(custom.isSensitive('wardNumber'), isTrue);
       expect(redactor.isSensitive('wardNumber'), isFalse);
     });

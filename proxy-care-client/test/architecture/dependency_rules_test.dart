@@ -16,6 +16,8 @@ const _frameworkImports = [
   'package:dio/',
   'package:flutter_secure_storage/',
   'package:go_router/',
+  'package:logger/',
+  'package:connectivity_plus/',
 ];
 
 /// Files that know about `AppException`s and how they are produced. Only
@@ -52,7 +54,9 @@ final _rules = [
       r'core/auth/(authentication_state|authorization/)|'
       r'core/router/(route_conventions|route_access|route_guards|'
       r'intended_destination|deep_link_policy|navigation_payload|'
-      r'redirect_destinations)\.dart)',
+      r'redirect_destinations)\.dart|'
+      r'core/logging/app_logger\.dart|core/observability/|core/formatting/|'
+      r'core/security/(redactor|session_cleanup)\.dart)',
     ),
     forbidden: _frameworkImports,
   ),
@@ -94,6 +98,16 @@ final _rules = [
     name: 'only core/security uses flutter_secure_storage',
     appliesTo: RegExp(r'^lib/(?!core/security/)'),
     forbidden: const ['package:flutter_secure_storage/'],
+  ),
+  ImportRule(
+    name: 'only core/logging uses the logger package',
+    appliesTo: RegExp(r'^lib/(?!core/logging/)'),
+    forbidden: const ['package:logger/'],
+  ),
+  ImportRule(
+    name: 'only core/connectivity uses connectivity_plus',
+    appliesTo: RegExp(r'^lib/(?!core/connectivity/)'),
+    forbidden: const ['package:connectivity_plus/'],
   ),
   ImportRule(
     name: 'networking does not know the identity provider',

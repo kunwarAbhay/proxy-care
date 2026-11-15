@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../logging/app_logger.dart';
 import '../network/api_client.dart';
 import '../network/dio_api_client.dart';
 import '../network/dio_factory.dart';
@@ -19,7 +20,7 @@ final dioProvider = Provider<Dio>((ref) {
     baseUrl: ref.watch(envProvider).apiBaseUrl,
     tokens: ref.watch(authenticationSessionProvider),
     recovery: ref.watch(sessionTokenRecoveryProvider),
-    log: (message) => logger.i(message),
+    log: logger.info,
     detailedLogging: kDebugMode,
   ).create();
   ref.onDispose(dio.close);

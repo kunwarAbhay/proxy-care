@@ -1,9 +1,9 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:logger/logger.dart';
-import 'package:mocktail/mocktail.dart';
 import 'package:proxy_care_client/core/di/core_providers.dart';
 import 'package:proxy_care_client/core/error/logger_error_reporter.dart';
+import 'package:proxy_care_client/core/logging/app_logger.dart';
+import 'package:proxy_care_client/core/logging/package_app_logger.dart';
 
 import '../../fixtures/env_fixtures.dart';
 import '../../helpers/provider_container.dart';
@@ -30,7 +30,7 @@ void main() {
     final first = container.read(loggerProvider);
     final second = container.read(loggerProvider);
 
-    expect(first, isA<Logger>());
+    expect(first, isA<PackageAppLogger>());
     expect(second, same(first));
   });
 
@@ -50,7 +50,7 @@ void main() {
   });
 
   test('the error reporter writes to the injected logger', () {
-    final logger = MockLogger();
+    final logger = RecordingLogger();
     final container = createTestContainer(
       overrides: [loggerProvider.overrideWithValue(logger)],
     );
@@ -59,12 +59,10 @@ void main() {
 
     reporter.report(error, StackTrace.empty, context: 'test');
 
-    verify(
-      () => logger.e(
-        'Unhandled error (test)',
-        error: error,
-        stackTrace: StackTrace.empty,
-      ),
-    ).called(1);
+    final entry = logger.entries.single;
+    expect(entry.level, LogLevel.error);
+    expect(entry.message, 'Unhandled error');
+    expect(entry.fields, {'context': 'test'});
+    expect(entry.error, same(error));
   });
 }

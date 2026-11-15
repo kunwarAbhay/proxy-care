@@ -1,9 +1,8 @@
-import 'package:logger/logger.dart';
-
+import '../logging/app_logger.dart';
 import 'crash_reporter.dart';
 import 'error_reporter.dart';
 
-/// [ErrorReporter] that writes errors to the application [Logger] and
+/// [ErrorReporter] that writes errors to the application [AppLogger] and
 /// forwards a privacy-safe [CrashReport] to the [CrashReporter].
 ///
 /// The logger stays the primary sink: crash reporting is added next to it,
@@ -15,7 +14,7 @@ final class LoggerErrorReporter implements ErrorReporter {
     this.crashReporter = const NoopCrashReporter(),
   });
 
-  final Logger _logger;
+  final AppLogger _logger;
 
   /// Where privacy-safe crash reports go.
   final CrashReporter crashReporter;
@@ -25,8 +24,12 @@ final class LoggerErrorReporter implements ErrorReporter {
 
   @override
   void report(Object error, StackTrace stackTrace, {String? context}) {
-    final where = context == null ? '' : ' ($context)';
-    _logger.e('Unhandled error$where', error: error, stackTrace: stackTrace);
+    _logger.error(
+      'Unhandled error',
+      fields: {'context': ?context},
+      error: error,
+      stackTrace: stackTrace,
+    );
     crashReporter.record(
       CrashReport.from(
         error,

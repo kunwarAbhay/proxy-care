@@ -76,6 +76,16 @@
       }
     }
   },
+  "durationHours": "{count, plural, =1{1 hour} other{{count} hours}}",
+  "@durationHours": {
+    "description": "A duration in whole hours, e.g. the caretaker's booked block ('3 hours').",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "3"
+      }
+    }
+  },
   "a11yStepProgress": "Step {current} of {total}",
   "@a11yStepProgress": {
     "description": "Screen-reader label of the step progress bar in multi-step flows.",

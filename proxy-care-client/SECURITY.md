@@ -69,14 +69,54 @@ Strict Transport Security, no third-party scripts on the app origin, and the
 - `LoggingInterceptor` logs only method, path, status, duration and
   correlation ID. No hosts, query values, headers or bodies; debug builds add
   masked headers and query parameter names only.
-- `LogRedactor` masks `Authorization`, cookies, tokens (access, refresh, id),
-  passwords, secrets, API keys, OTPs and PINs, identity and payment details,
-  contact details and health fields.
+- All logging goes through `AppLogger` (`loggerProvider`); `print` is
+  rejected by the analyzer. Production logs warnings and errors only, and
+  nothing when `ENABLE_LOGGING` is false (the production default). Log
+  messages are constant text; data goes in structured fields.
+- `Redactor` (`core/security/redactor.dart`) masks, by key name,
+  `Authorization`, cookies, tokens (access, refresh, id), passwords,
+  secrets, API keys, OTPs and PINs, identity and payment details, contact
+  details and health fields; and, in any text, JWTs, bearer tokens, email
+  addresses and runs of 9 or more digits (phone, Aadhaar, account, card).
+  The logger applies it to every message, field and error text.
+- Outside development builds, errors are logged as their type only.
 - The Supabase SDK's debug logging is disabled (`debug: false`).
 - Crash reports carry only the error type, stack trace and context, never the
   error message or object.
 - `AuthenticatedUser.toString()` prints the user ID only;
   `SecureStorageException` names the key, never the value.
+
+## Handling sensitive data (conventions for features)
+
+- **PII and health data stay out of side channels:** not in logs (never
+  interpolate data into messages; use field names the `Redactor` masks),
+  not in analytics, not in crash reports, not in URLs (paths carry opaque
+  IDs, never names or phone numbers).
+- **Error reporting:** report errors through `ErrorReporter`. It logs
+  through the redacting logger and sends crash services only a
+  `CrashReport` (type, stack, context). Never put user data in the
+  messages of exceptions you throw.
+- **Analytics:** features call `analyticsServiceProvider`, which drops
+  events with non-snake_case names, and parameters with sensitive keys,
+  non-primitive values or values that look like personal data. Review
+  event parameters like API fields.
+- **Session cleanup:** anything that keeps per-user data (caches, drafts,
+  push tokens, a vendor user ID) registers a task with
+  `sessionCleanupProvider`. Tasks run when the session ends (sign-out or
+  expiry); a failure is reported and the other tasks still run. Tokens in
+  secure storage are cleared by the authentication session itself.
+- **Push notifications:** payloads carry IDs only (no names or health
+  details: they can appear on a lock screen). Tapped payloads are validated
+  by `NavigationPayload` before navigation.
+
+## Device information
+
+The app collects only the platform (`AppPlatform`: web, android, ios),
+needed to register a push token. It does not read device IDs, the
+advertising ID, the model, the OS version, location or installed apps.
+Connectivity is used on the device only, to explain failures, and is not
+sent anywhere. Any other device data needs a privacy review and updates to
+this section and the store privacy declarations.
 
 ## Environment configuration
 

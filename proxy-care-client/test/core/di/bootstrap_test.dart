@@ -35,5 +35,7 @@ void main() {
       container.read(authenticationSessionProvider).currentState,
       isA<Unauthenticated>(),
     );
+    // Date formatting data is loaded.
+    expect(container.read(appFormattersProvider).date(DateTime(2026)), '1 Jan 2026');
   });
 }

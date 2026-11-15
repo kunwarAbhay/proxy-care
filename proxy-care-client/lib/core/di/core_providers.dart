@@ -1,11 +1,16 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:logger/logger.dart';
 
+import '../config/app_environment.dart';
 import '../config/env.dart';
 import '../error/crash_reporter.dart';
 import '../error/error_mapper.dart';
 import '../error/error_reporter.dart';
 import '../error/logger_error_reporter.dart';
+import '../formatting/app_formatters.dart';
+import '../logging/app_logger.dart';
+import '../logging/package_app_logger.dart';
+import '../observability/analytics_service.dart';
+import '../observability/performance_monitor.dart';
 
 // Infrastructure providers shared by every feature.
 //
@@ -27,14 +32,16 @@ final envProvider = Provider<Env>(
   ),
 );
 
-/// Application logger. Writes nothing when `ENABLE_LOGGING` is false.
+/// Application logger, at the level the environment allows
+/// (`logLevelFor`); error text only in development. Sensitive data is
+/// redacted before writing.
 ///
 /// Lives for the whole app and is closed when the container is disposed.
-final loggerProvider = Provider<Logger>((ref) {
+final loggerProvider = Provider<AppLogger>((ref) {
   final env = ref.watch(envProvider);
-  final logger = Logger(
-    filter: ProductionFilter(),
-    level: env.enableLogging ? Level.debug : Level.off,
+  final logger = PackageAppLogger(
+    minimumLevel: logLevelFor(env),
+    includeErrorDetails: env.environment == AppEnvironment.development,
   );
   ref.onDispose(logger.close);
   return logger;
@@ -56,6 +63,27 @@ final errorReporterProvider = Provider<ErrorReporter>(
 final crashReporterProvider = Provider<CrashReporter>(
   (ref) => const NoopCrashReporter(),
 );
+
+/// The analytics vendor adapter. A no-op until a vendor is chosen; override
+/// it then. Features use [analyticsServiceProvider], never this.
+final analyticsAdapterProvider = Provider<AnalyticsService>(
+  (ref) => const NoopAnalyticsService(),
+);
+
+/// Product analytics for features: every event is filtered
+/// ([FilteringAnalyticsService]) before reaching the adapter.
+final analyticsServiceProvider = Provider<AnalyticsService>(
+  (ref) => FilteringAnalyticsService(ref.watch(analyticsAdapterProvider)),
+);
+
+/// Performance tracing. A no-op until a vendor is chosen; override it then.
+final performanceMonitorProvider = Provider<PerformanceMonitor>(
+  (ref) => const NoopPerformanceMonitor(),
+);
+
+/// Date, number and amount formatting (requires
+/// `AppFormatters.initialize`, done in bootstrap).
+final appFormattersProvider = Provider<AppFormatters>((ref) => AppFormatters());
 
 /// Translates infrastructure errors (Dio, HTTP status, backend error bodies,
 /// serialization) into `AppException`s. Data sources and repositories read

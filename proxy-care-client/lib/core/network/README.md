@@ -9,7 +9,7 @@ The HTTP layer, built on Dio. See ARCHITECTURE.md, "Networking".
   `ErrorMapper`.
 - `dio_factory.dart`: `BaseOptions` (environment base URL, 10 / 30 / 30 s
   timeouts, JSON) and the interceptor order.
-- `interceptors/`: correlation ID, logging (with `LogRedactor`), auth,
+- `interceptors/`: correlation ID, logging (with `Redactor` from `core/security`), auth,
   retry.
 - `response_parser.dart`, `api_response.dart`: typed parsing of enveloped
   and raw responses.

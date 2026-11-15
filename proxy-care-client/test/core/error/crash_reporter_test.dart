@@ -1,5 +1,4 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:mocktail/mocktail.dart';
 import 'package:proxy_care_client/core/di/core_providers.dart';
 import 'package:proxy_care_client/core/error/crash_reporter.dart';
 import 'package:proxy_care_client/core/error/logger_error_reporter.dart';
@@ -36,7 +35,7 @@ void main() {
   });
 
   test('the error reporter logs and forwards a safe crash report', () {
-    final logger = MockLogger();
+    final logger = RecordingLogger();
     final crashes = _RecordingCrashReporter();
     final reporter = LoggerErrorReporter(logger, crashReporter: crashes);
 
@@ -47,13 +46,10 @@ void main() {
       context: 'repository',
     );
 
-    verify(
-      () => logger.e(
-        'Unhandled error (zone)',
-        error: any(named: 'error'),
-        stackTrace: StackTrace.empty,
-      ),
-    ).called(1);
+    expect(logger.entries.map((e) => e.fields['context']), [
+      'zone',
+      'repository',
+    ]);
     expect(crashes.reports.map((r) => (r.errorType, r.fatal)), [
       ('StateError', true),
       ('_Exception', false),

@@ -1,7 +1,7 @@
 import 'package:dio/dio.dart';
 
+import '../../security/redactor.dart';
 import '../request_options.dart';
-import 'log_redactor.dart';
 
 /// Writes one line per request attempt: method, endpoint path, status (or
 /// failure type) and duration, e.g.
@@ -18,7 +18,7 @@ final class LoggingInterceptor extends Interceptor {
     required this.log,
     this.detailed = false,
     this.logBodies = false,
-    this.redactor = const LogRedactor(),
+    this.redactor = const Redactor(),
     DateTime Function()? clock,
   }) : _clock = clock ?? DateTime.now;
 
@@ -34,7 +34,7 @@ final class LoggingInterceptor extends Interceptor {
   final bool logBodies;
 
   /// Masks sensitive values.
-  final LogRedactor redactor;
+  final Redactor redactor;
 
   @override
   void onRequest(RequestOptions options, RequestInterceptorHandler handler) {
