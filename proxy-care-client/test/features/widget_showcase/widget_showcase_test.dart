@@ -149,12 +149,11 @@ void main() {
       final container = await _pumpApp(tester, testEnv());
 
       container.read(routerProvider).go('/widget-showcase');
-      await tester.pump();
-      await tester.pump();
+      await tester.pumpAndSettle();
 
       expect(find.byType(WidgetShowcaseScreen), findsNothing);
       final placeholder = tester.widget<RouterPlaceholder>(
-        find.byType(RouterPlaceholder),
+        find.byType(RouterPlaceholder).last,
       );
       expect(placeholder.kind, RouterPlaceholderKind.notFound);
     });

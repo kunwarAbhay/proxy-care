@@ -1,14 +1,18 @@
 /// The showcase's categories, in display order. Only categories with real
 /// design-system components exist.
+///
+/// Labels are short because they are chip labels: a chip never wraps, so a
+/// long label would overflow narrow windows or large text sizes. Each
+/// section shows its full title.
 enum ShowcaseCategory {
   /// `PcButton`, `PcIconButton`.
   buttons('Buttons'),
 
   /// `PcTextField`, `PcOtpInput`.
-  inputs('Input fields'),
+  inputs('Inputs'),
 
   /// `PcSwitch`, selection cards, checkbox tiles, chips, segmented button.
-  selection('Selection controls'),
+  selection('Selection'),
 
   /// `PcCard` and the card family.
   cards('Cards'),
@@ -20,16 +24,16 @@ enum ShowcaseCategory {
   navigation('Navigation'),
 
   /// `showPcDialog`, `showPcProgressSheet`.
-  overlays('Dialogs and sheets'),
+  overlays('Dialogs'),
 
   /// Notes, banners, badges, tags, notifications, snackbar.
   feedback('Feedback'),
 
   /// Loading buttons and the progress sheet.
-  loading('Loading indicators'),
+  loading('Loading'),
 
   /// `PcEmptyState`, `PcResultState`.
-  emptyStates('Empty and result states'),
+  emptyStates('Empty states'),
 
   /// `PcAvatar`.
   avatars('Avatars'),
