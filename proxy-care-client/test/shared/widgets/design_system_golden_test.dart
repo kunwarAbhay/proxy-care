@@ -1,4 +1,3 @@
-import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:proxy_care_client/core/theme/app_density.dart';
 import 'package:proxy_care_client/core/theme/tokens/pc_colors.dart';
@@ -66,10 +65,10 @@ void main() {
   goldenTest(
     'text fields and chips in their states',
     name: 'inputs',
-    children: [
-      const PcTextField(label: 'default', helper: 'helper'),
-      const PcTextField(label: 'error', error: 'error'),
-      const PcTextField(label: 'disabled', enabled: false),
+    children: const [
+      PcTextField(label: 'default', helper: 'helper'),
+      PcTextField(label: 'error', error: 'error'),
+      PcTextField(label: 'disabled', enabled: false),
       Wrap(
         spacing: 8,
         children: [
