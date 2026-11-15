@@ -14,7 +14,7 @@ import 'package:proxy_care_client/core/theme/app_theme.dart';
 ///   by unit tests against the type scale instead.
 /// - Images live next to the test in `goldens/<name>.png` and are blessed
 ///   only by the "Bless goldens" workflow (Linux, pinned Flutter), then
-///   reviewed by eye against the design system before committing.
+///   reviewed by eye against the design system before merging.
 /// - Goldens are skipped on other operating systems, whose rendering
 ///   differs slightly.
 void goldenTest(

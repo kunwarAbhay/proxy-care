@@ -1,15 +1,17 @@
 name: Bless goldens
 
 # Regenerates golden images on the same runner and Flutter version as CI and
-# uploads them as an artifact. Run it by hand on a branch after an intended
-# visual change, review every image against the design system, then commit
-# the images. CI never blesses goldens: it only compares.
+# commits them to the branch it runs on ("Bless goldens" commit). Run it by
+# hand on a feature branch (never main) after an intended visual change,
+# then review every changed image against the design system before merging;
+# revert the commit if an image is wrong. CI never blesses goldens: it only
+# compares.
 
 on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   goldens:
@@ -36,9 +38,18 @@ jobs:
       - name: Regenerate goldens
         run: make goldens
 
-      - name: Upload golden images
-        uses: actions/upload-artifact@v4
-        with:
-          name: goldens
-          path: proxy-care-client/test/**/goldens/*.png
-          if-no-files-found: error
+      - name: Commit golden images to the branch
+        run: |
+          if [ "$GITHUB_REF_NAME" = "main" ]; then
+            echo "Bless goldens on a feature branch, not main."
+            exit 1
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add test
+          if git diff --cached --quiet; then
+            echo "Golden images are unchanged."
+          else
+            git commit -m "Bless goldens"
+            git push
+          fi

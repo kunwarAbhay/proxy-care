@@ -104,10 +104,11 @@ component family, showing the variants and states the design system
 - Text renders as Ahem blocks: goldens check colors, shapes, borders,
   spacing and sizes. Type is tested against the type scale in unit tests.
 - Images are blessed only by the **Bless goldens** workflow (Actions → Bless
-  goldens → Run workflow, on your branch). It renders on the same runner and
-  Flutter version as CI and uploads the images as an artifact.
-- Review every image against the design system before committing it, and
-  commit images separately with the reason they changed. Never bless to make
+  goldens → Run workflow, on your feature branch; it refuses `main`). It
+  renders on the same runner and Flutter version as CI and commits the
+  images to the branch as "Bless goldens".
+- Review every changed image against the design system before merging, and
+  revert the "Bless goldens" commit if one is wrong. Never bless to make
   a failing test pass.
 - Goldens are skipped on macOS and Windows, which render slightly
   differently.
