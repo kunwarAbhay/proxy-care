@@ -9,6 +9,13 @@
 #   make test                     Run all tests
 #   make check-env [ENV=...]      Validate config/env/$(ENV).json
 #   make build-web [ENV=...]      Validate config, then release web build
+#   make build-android [ENV=...]  Validate config, then release APK and App
+#                                 Bundle (debug-key signed; needs Android SDK
+#                                 and JDK 17)
+#   make build-ios [ENV=...]      Validate config, then unsigned release iOS
+#                                 build (macOS with Xcode only)
+#   make goldens                  Regenerate golden images (Linux; see
+#                                 TESTING.md)
 #   make build-showcase [BASE_HREF=/repo/]
 #                                 Release web build of the widget showcase
 #                                 (config/env/showcase.json) at BASE_HREF
@@ -26,7 +33,7 @@ DEFINES_FILE ?= config/env/$(ENV).json
 BASE_HREF ?= /
 
 .PHONY: get get-locked gen format format-check analyze test check-env build-web \
-	build-showcase goldens
+	build-android build-ios build-showcase goldens
 
 get:
 	$(FLUTTER) pub get
@@ -60,6 +67,14 @@ check-env:
 
 build-web: check-env
 	$(FLUTTER) build web --release --dart-define-from-file=$(DEFINES_FILE)
+
+build-android: check-env
+	$(FLUTTER) build apk --release --dart-define-from-file=$(DEFINES_FILE)
+	$(FLUTTER) build appbundle --release --dart-define-from-file=$(DEFINES_FILE)
+
+build-ios: check-env
+	$(FLUTTER) build ios --release --no-codesign \
+		--dart-define-from-file=$(DEFINES_FILE)
 
 # The widget showcase is a development preview: it never uses a staging or
 # production config (WidgetShowcaseRoutes refuses production anyway).

@@ -15,8 +15,9 @@ android {
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.proxycare.proxy_care_client"
+        // Placeholder ID: replace with the registered ID before a store
+        // release (see README, "Android configuration").
+        applicationId = "com.proxycare.client"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion
@@ -27,12 +28,20 @@ android {
         // flag during build.
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+
+        // App Links host (AndroidManifest intent filter). `.invalid` is a
+        // reserved placeholder: no domain is owned yet. Override with
+        // `-PappLinkHost=<domain>` once one is (docs/deep-linking.md).
+        manifestPlaceholders["appLinkHost"] =
+            (project.findProperty("appLinkHost") as String?) ?: "app-links.invalid"
     }
 
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
+            // CI and local release builds are signed with the debug key, so no
+            // credentials are needed. Store releases need an upload key
+            // configured outside the repository (README, "Android
+            // configuration"); never commit signing files.
             signingConfig = signingConfigs.getByName("debug")
         }
     }

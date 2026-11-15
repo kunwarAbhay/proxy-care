@@ -1,8 +1,17 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- The API, Supabase Auth. -->
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <!-- Backups are off: the session in flutter_secure_storage is encrypted
+         with an Android Keystore key that never leaves the device, so a
+         restored copy could not be decrypted (SECURITY.md). -->
     <application
-        android:label="proxy_care_client"
+        android:label="Proxy Care"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/ic_launcher"
+        android:allowBackup="false"
+        android:fullBackupContent="false"
+        android:dataExtractionRules="@xml/data_extraction_rules">
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -23,6 +32,20 @@
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+            <!-- Hand incoming links to the router (go_router). -->
+            <meta-data
+                android:name="flutter_deeplinking_enabled"
+                android:value="true" />
+            <!-- Android App Links. The host is a build placeholder
+                 (appLinkHost in app/build.gradle.kts); verification needs
+                 /.well-known/assetlinks.json on that domain
+                 (docs/deep-linking.md). -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="${appLinkHost}" />
             </intent-filter>
         </activity>
         <!-- Don't delete the meta-data below.
