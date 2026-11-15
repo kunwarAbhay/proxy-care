@@ -214,6 +214,7 @@ proxy-care-client/
 ├── ARCHITECTURE.md         Layers, dependency rules, DI and feature conventions
 ├── AUTHENTICATION.md       Supabase Auth, session storage, Dio integration
 ├── SECURITY.md             Token storage, logging, backend JWT validation
+├── TESTING.md              Test layout, helpers, rules, integration and goldens
 ├── assets/fonts/          Bundled Noto Sans Devanagari (OFL)
 ├── config/env/             Compile-time defines per environment
 ├── docs/                   Design system, navigation, deep linking, observability

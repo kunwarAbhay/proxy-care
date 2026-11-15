@@ -26,7 +26,7 @@ DEFINES_FILE ?= config/env/$(ENV).json
 BASE_HREF ?= /
 
 .PHONY: get get-locked gen format format-check analyze test check-env build-web \
-	build-showcase
+	build-showcase goldens
 
 get:
 	$(FLUTTER) pub get
@@ -37,6 +37,11 @@ get-locked:
 gen:
 	$(DART) run build_runner build --delete-conflicting-outputs
 	$(FLUTTER) gen-l10n
+
+# Regenerates golden images. Linux only (CI's "Bless goldens" workflow);
+# review every changed image before committing it.
+goldens:
+	$(FLUTTER) test --update-goldens --tags golden
 
 format:
 	$(DART) format .

@@ -194,6 +194,19 @@ Widget labelledPlaceholder(
   GoRouterState state,
 ) => Text('placeholder ${kind.name}');
 
+/// Delivers [link] as the platform does for an App Link or Universal Link
+/// while the app is running, then settles.
+Future<void> deliverPlatformLink(WidgetTester tester, String link) async {
+  await tester.binding.defaultBinaryMessenger.handlePlatformMessage(
+    'flutter/navigation',
+    const JSONMethodCodec().encodeMethodCall(
+      MethodCall('pushRouteInformation', {'location': link, 'state': null}),
+    ),
+    (_) {},
+  );
+  await tester.pumpAndSettle();
+}
+
 /// A user, optionally with [roles].
 Authenticated signedIn({Set<Role> roles = const {}}) => Authenticated(
   user: AuthenticatedUser(id: 'user-1', roles: roles),
@@ -228,18 +241,9 @@ final class RouterHarness {
     await tester.pumpAndSettle();
   }
 
-  /// Delivers [link] as the platform does for an App Link or Universal
-  /// Link while the app is running.
-  Future<void> openPlatformLink(WidgetTester tester, String link) async {
-    await tester.binding.defaultBinaryMessenger.handlePlatformMessage(
-      'flutter/navigation',
-      const JSONMethodCodec().encodeMethodCall(
-        MethodCall('pushRouteInformation', {'location': link, 'state': null}),
-      ),
-      (_) {},
-    );
-    await tester.pumpAndSettle();
-  }
+  /// Delivers [link] as the platform does while the app is running.
+  Future<void> openPlatformLink(WidgetTester tester, String link) =>
+      deliverPlatformLink(tester, link);
 
   /// Pumps an app around the router.
   static Future<RouterHarness> pump(
